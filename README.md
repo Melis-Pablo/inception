@@ -1,7 +1,7 @@
 # Inception
 
-> [!Note] Summary 
-> This document is a System Administration related exercise.
+> [!Note]
+> Summary: This document is a System Administration related exercise.
 > Version: 3.1
 
 ## 0. Contents
