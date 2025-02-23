@@ -17,7 +17,7 @@
 ## 1. Preamble
 ---
 
-![[Preamble.jpeg]]
+![Preamble Meme](images/Preamble.jpeg)
 
 ## 2. Introduction
 ---
@@ -59,7 +59,7 @@ You then have to set up:
 
 Your containers must restart automatically in case of a crash.
 
->[!note] 
+>[!note]
 >A Docker container is not a virtual machine. Thus, it is not recommended to use any hacky patches based on ’tail -f’ and similar methods when trying to run it. Read about how daemons work and whether it’s a good idea to use them or not.
 
 >[!warning]
@@ -77,7 +77,7 @@ To simplify the process, you must configure your domain name to point to your lo
 This domain name must be login.42.fr. Again, you must use your own login.
 For example, if your login is ’wil’, wil.42.fr will redirect to the IP address pointing to Wil’s website.
 
->[!warning] 
+>[!warning]
 >The latest tag is prohibited.
 Passwords must not be present in your Dockerfiles.
 The use of environment variables is mandatory.
@@ -86,16 +86,71 @@ Your NGINX container must be the sole entry point into your infrastructure, acce
 
 Here is an example diagram of the expected result:
 
-![[Diagram.png]]
+![Diagram](images/Diagram.png)
 
 Below is an example of the expected directory structure:
 
-![[DirectoryStructure.png]]
+```bash
+$> ls -alR
+total XX
+drwxrwxr-x 3 wil wil 4096 avril 42 20:42 .
+drwxrwxrwt 17 wil wil 4096 avril 42 20:42 ..
+-rw-rw-r-- 1 wil wil XXXX avril 42 20:42 Makefile
+drwxrwxr-x 3 wil wil 4096 avril 42 20:42 secrets
+drwxrwxr-x 3 wil wil 4096 avril 42 20:42 srcs
+./secrets:
+total XX
+drwxrwxr-x 2 wil wil 4096 avril 42 20:42 .
+drwxrwxr-x 6 wil wil 4096 avril 42 20:42 ..
+-rw-r--r-- 1 wil wil XXXX avril 42 20:42 credentials.txt
+-rw-r--r-- 1 wil wil XXXX avril 42 20:42 db_password.txt
+-rw-r--r-- 1 wil wil XXXX avril 42 20:42 db_root_password.txt
+./srcs:
+total XX
+drwxrwxr-x 3 wil wil 4096 avril 42 20:42 .
+drwxrwxr-x 3 wil wil 4096 avril 42 20:42 ..
+-rw-rw-r-- 1 wil wil XXXX avril 42 20:42 docker-compose.yml
+-rw-rw-r-- 1 wil wil XXXX avril 42 20:42 .env
+drwxrwxr-x 5 wil wil 4096 avril 42 20:42 requirements
+./srcs/requirements:
+total XX
+drwxrwxr-x 5 wil wil 4096 avril 42 20:42 .
+drwxrwxr-x 3 wil wil 4096 avril 42 20:42 ..
+drwxrwxr-x 4 wil wil 4096 avril 42 20:42 bonus
+drwxrwxr-x 4 wil wil 4096 avril 42 20:42 mariadb
+drwxrwxr-x 4 wil wil 4096 avril 42 20:42 nginx
+drwxrwxr-x 4 wil wil 4096 avril 42 20:42 tools
+drwxrwxr-x 4 wil wil 4096 avril 42 20:42 wordpress
+./srcs/requirements/mariadb:
+total XX
+drwxrwxr-x 4 wil wil 4096 avril 42 20:45 .
+drwxrwxr-x 5 wil wil 4096 avril 42 20:42 ..
+drwxrwxr-x 2 wil wil 4096 avril 42 20:42 conf
+-rw-rw-r-- 1 wil wil XXXX avril 42 20:42 Dockerfile
+-rw-rw-r-- 1 wil wil XXXX avril 42 20:42 .dockerignore
+drwxrwxr-x 2 wil wil 4096 avril 42 20:42 tools
+[...]
+./srcs/requirements/nginx:
+total XX
+drwxrwxr-x 4 wil wil 4096 avril 42 20:42 .
+drwxrwxr-x 5 wil wil 4096 avril 42 20:42 ..
+drwxrwxr-x 2 wil wil 4096 avril 42 20:42 conf
+-rw-rw-r-- 1 wil wil XXXX avril 42 20:42 Dockerfile
+-rw-rw-r-- 1 wil wil XXXX avril 42 20:42 .dockerignore
+drwxrwxr-x 2 wil wil 4096 avril 42 20:42 tools
+[...]
+$> cat srcs/.env
+DOMAIN_NAME=wil.42.fr
+# MYSQL SETUP
+MYSQL_USER=XXXXXXXXXXXX
+[...]
+$>
+```
 
->[!warning] 
+>[!warning]
 >For obvious security reasons, any credentials, API keys, passwords, etc., must be saved locally in various ways / files and ignored by git. Publicly stored credentials will lead you directly to a failure of the project.
 
->[!note] 
+>[!note]
 >You can store your variables (as a domain name) in an environment variable file like .env
 
 ## 5. Bonus Part
@@ -117,10 +172,10 @@ Bonus list:
 
 - Set up a service of your choice that you think is useful. During the defense, you will have to justify your choice.
 
->[!note] 
+>[!note]
 >To complete the bonus part, you have the possibility to set up extra services. In this case, you may open more ports to suit your needs.
 
->[!warning] 
+>[!warning]
 >The bonus part will only be assessed if the mandatory part is completed perfectly. Perfect means the mandatory part has been fully completed and functions without any malfunctions. If you have not passed ALL the mandatory requirements, your bonus part will not be evaluated at all.
 
 ## 6. Submission and peer-evaluation
