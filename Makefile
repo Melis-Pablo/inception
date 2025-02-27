@@ -29,12 +29,6 @@ setup:
 	@sudo chown -R $(USER):$(USER) $(DATA_PATH)/mariadb
 	@sudo chown -R $(USER):$(USER) $(DATA_PATH)/wordpress
 	@printf "$(GREEN)Directory setup complete!$(RESET)\n"
-# =================================================================================================
-# setup:
-# 	@printf "$(GREEN)Creating data directories...$(RESET)\n"
-# 	@mkdir -p $(DATA_PATH)/mariadb
-# 	@mkdir -p $(DATA_PATH)/wordpress
-# =================================================================================================
 
 # Build and start containers
 up: check-volumes
