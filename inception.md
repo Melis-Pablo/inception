@@ -2,7 +2,7 @@
 
 > [!Note]
 > Summary: This document is a System Administration related exercise.
-> Version: 3.1
+> Version: 3.2
 
 ## 0. Contents
 ---
@@ -35,7 +35,7 @@ This project aims to broaden your knowledge of system administration through the
 ## 4. Mandatory Part
 ---
 
-This project involves setting up a small infrastructure composed of different services under specific rules. The whole project has to be done in a virtual machine. You must use docker compose.
+This project involves setting up a small infrastructure composed of different services under specific rules. The whole project has to be done in a virtual machine. You must use Docker Compose.
 
 Each Docker image must have the same name as its corresponding service.
 Each service has to run in a dedicated container.
@@ -82,7 +82,7 @@ For example, if your login is ’wil’, wil.42.fr will redirect to the IP addre
 Passwords must not be present in your Dockerfiles.
 The use of environment variables is mandatory.
 It is also strongly recommended to use a .env file to store environment variables and to use the Docker secrets to store any confidential information.
-Your NGINX container must be the sole entry point into your infrastructure, accessible onlt via port 443, using the TLSv1.2 or TLSv1.3 protocol.
+Your NGINX container must be the sole entry point into your infrastructure, accessible only via port 443, using the TLSv1.2 or TLSv1.3 protocol.
 
 Here is an example diagram of the expected result:
 
