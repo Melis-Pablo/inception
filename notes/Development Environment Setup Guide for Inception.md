@@ -195,14 +195,21 @@ echo ".DS_Store" >> .gitignore
 ### Minimal Browser
 
 To install
-```
+```sh
 sudo apt install -y firefox xorg openbox
 ```
 
 Then you can start Firefox with:
-```
+```sh
 startx
 ```
+right click and open browser
+
+Edit hosts file by adding
+```
+127.0.0.1 login.42.fr
+```
+
 ### Directory Structure
 
 ```
