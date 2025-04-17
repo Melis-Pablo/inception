@@ -3,6 +3,15 @@ version: "3"
 services:
   nginx:
     container_name: nginx
+    build:
+      context: ./requirements/nginx
+      dockerfile: Dockerfile
+    ports:
+      - "443:443"
+    volumes:
+      - wp_data:${WP_VOLUME} # Named volume for WordPress data persistence
+    depends_on:
+      - wordpress
     networks:
       - inception_network
     restart: unless-stopped
@@ -31,6 +40,21 @@ services:
 
   wordpress:
     container_name: wordpress
+    build:
+      context: ./requirements/wordpress
+      dockerfile: Dockerfile
+    depends_on:
+      - mariadb
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - WP_TITLE=${WP_TITLE}
+      - WP_URL=${WP_URL}
+    volumes:
+      - wp_data:${WP_VOLUME} # Named volume for WordPress data persistence
+      - ./secrets/db_password.txt:/run/secrets/db_password:ro # Read-only secret for database password
+      - ./secrets/credentials.txt:/run/secrets/credentials.txt:ro # Read-only secret for WordPress credentials
     networks:
       - inception_network
     restart: unless-stopped
@@ -45,4 +69,10 @@ volumes:
     driver_opts:
       type: none
       device: ${DB_VOLUME}
+      o: bind
+  wp_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${WP_VOLUME}
       o: bind

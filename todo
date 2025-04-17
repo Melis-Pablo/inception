@@ -21,10 +21,10 @@
 - [x] Configure volume for persistence
 
 ## 5. WordPress Container
-- [ ] Create Dockerfile for WordPress with php-fpm
-- [ ] Configure php-fpm
-- [ ] Configure WordPress
-- [ ] Configure volume for persistence
+- [x] Create Dockerfile for WordPress with php-fpm
+- [x] Configure php-fpm
+- [x] Configure WordPress
+- [x] Configure volume for persistence
 
 ## 6. NGINX Container
 - [ ] Create Dockerfile for NGINX
@@ -33,9 +33,9 @@
 - [ ] Setup reverse proxy to WordPress
 
 ## 7. docker-compose.yml
-- [ ] Configure all services
-- [ ] Define volumes
-- [ ] Set up networking
+- [x] Configure all services
+- [x] Define volumes
+- [x] Set up networking
 - [x] Configure restart policies
 
 ## 8. Makefile
