@@ -27,10 +27,10 @@
 - [x] Configure volume for persistence
 
 ## 6. NGINX Container
-- [ ] Create Dockerfile for NGINX
-- [ ] Generate SSL certificates for TLS
-- [ ] Configure NGINX for secure access
-- [ ] Setup reverse proxy to WordPress
+- [x] Create Dockerfile for NGINX
+- [x] Generate SSL certificates for TLS
+- [x] Configure NGINX for secure access
+- [x] Setup reverse proxy to WordPress
 
 ## 7. docker-compose.yml
 - [x] Configure all services
