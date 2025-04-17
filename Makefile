@@ -1,94 +1,72 @@
-# Variables
-NAME = inception
-DOCKER_COMPOSE_FILE = srcs/docker-compose.yml
-DATA_PATH = /home/$(USER)/data
-USER ?= $(shell whoami)
+# Docker Compose file location
+COMPOSE_FILE = srcs/docker-compose.yml
 
-# Colors for pretty output
+# Data directory for volumes
+DATA_DIR = /home/$(shell whoami)/data
+WORDPRESS_DATA = $(DATA_DIR)/wordpress
+MARIADB_DATA = $(DATA_DIR)/mariadb
+
+# Colors for output
 GREEN = \033[0;32m
-YELLOW = \033[1;33m
+YELLOW = \033[0;33m
 RED = \033[0;31m
 RESET = \033[0m
 
-# Basic commands
-all: setup up
+all: setup build up
 
-# Create necessary directories and setup environment
-# Enhanced setup target
 setup:
-	@printf "$(GREEN)Creating data directories...$(RESET)\n"
-	@if [ ! -d "$(DATA_PATH)" ]; then \
-		sudo mkdir -p $(DATA_PATH); \
-		sudo chown $(USER):$(USER) $(DATA_PATH); \
-	fi
-	@mkdir -p $(DATA_PATH)/mariadb
-	@mkdir -p $(DATA_PATH)/wordpress
-	@printf "$(YELLOW)Setting up permissions...$(RESET)\n"
-	@sudo chmod 755 $(DATA_PATH)/mariadb
-	@sudo chmod 755 $(DATA_PATH)/wordpress
-	@sudo chown -R $(USER):$(USER) $(DATA_PATH)/mariadb
-	@sudo chown -R $(USER):$(USER) $(DATA_PATH)/wordpress
-	@printf "$(GREEN)Directory setup complete!$(RESET)\n"
+	@echo "$(GREEN)Creating data directories...$(RESET)"
+	@mkdir -p $(WORDPRESS_DATA)
+	@mkdir -p $(MARIADB_DATA)
+	@echo "$(GREEN)Data directories created at:$(RESET)"
+	@echo "WordPress: $(WORDPRESS_DATA)"
+	@echo "MariaDB: $(MARIADB_DATA)"
 
-# Build and start containers
-up: check-volumes
-	@printf "$(GREEN)Starting containers...$(RESET)\n"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) up --build -d
+build:
+	@echo "$(GREEN)Building Docker images...$(RESET)"
+	@docker-compose -f $(COMPOSE_FILE) build
 
-# Stop containers
+up:
+	@echo "$(GREEN)Starting containers...$(RESET)"
+	@docker-compose -f $(COMPOSE_FILE) up -d
+	@echo "$(GREEN)Containers started! Website available at https://pmelis.42.fr$(RESET)"
+
 down:
-	@printf "$(RED)Stopping $(NAME)...$(RESET)\n"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) down
+	@echo "$(YELLOW)Stopping containers...$(RESET)"
+	@docker-compose -f $(COMPOSE_FILE) down
+	@echo "$(YELLOW)Containers stopped!$(RESET)"
 
-# Clean everything: containers, networks, images, and volumes
 clean: down
-	@printf "$(RED)Cleaning $(NAME)...$(RESET)\n"
+	@echo "$(RED)Cleaning up Docker resources...$(RESET)"
 	@docker system prune -a --force
-	@docker volume rm $$(docker volume ls -q) 2>/dev/null || true
+	@echo "$(RED)Docker resources cleaned!$(RESET)"
 
-# Clean everything and remove data directories
 fclean: clean
-	@printf "$(RED)Full cleaning $(NAME)...$(RESET)\n"
-	@sudo rm -rf $(DATA_PATH)
+	@echo "$(RED)Removing volumes and data directories...$(RESET)"
+	@docker volume prune --force
+	@sudo rm -rf $(DATA_DIR)
+	@echo "$(RED)All data has been removed!$(RESET)"
 
-# Restart containers
-re: down up
+re: fclean setup build up
 
-# Add a volume test target
-test-volumes: up
-	@printf "$(YELLOW)Testing volume persistence...$(RESET)\n"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) ps | grep -q "Up" || \
-		(printf "$(RED)Containers are not running!$(RESET)\n" && exit 1)
-	@printf "Testing MariaDB volume..."
-	@test -f $(DATA_PATH)/mariadb/mysql/user.MYD || \
-		(printf "$(RED)MariaDB data not found!$(RESET)\n" && exit 1)
-	@printf "$(GREEN)OK$(RESET)\n"
-	@printf "Testing WordPress volume..."
-	@test -f $(DATA_PATH)/wordpress/wp-config.php || \
-		(printf "$(RED)WordPress data not found!$(RESET)\n" && exit 1)
-	@printf "$(GREEN)OK$(RESET)\n"
-
-# Add a volume cleanup target
-clean-volumes:
-	@printf "$(YELLOW)Cleaning volumes...$(RESET)\n"
-	@sudo rm -rf $(DATA_PATH)/mariadb/*
-	@sudo rm -rf $(DATA_PATH)/wordpress/*
-	@printf "$(GREEN)Volumes cleaned!$(RESET)\n"
-
-# Show container status
 status:
-	@docker ps
-	@echo "\nVolumes:"
-	@docker volume ls
-	@echo "\nNetworks:"
-	@docker network ls
+	@echo "$(GREEN)Container status:$(RESET)"
+	@docker-compose -f $(COMPOSE_FILE) ps
 
-# Add a volume check target
-check-volumes:
-	@if [ ! -d "$(DATA_PATH)/mariadb" ] || [ ! -d "$(DATA_PATH)/wordpress" ]; then \
-		printf "$(RED)Volumes not set up. Running setup...$(RESET)\n" && \
-		$(MAKE) setup; \
-	fi
+logs:
+	@echo "$(GREEN)Container logs:$(RESET)"
+	@docker-compose -f $(COMPOSE_FILE) logs
 
-# Add to your .PHONY list
-.PHONY: all setup up down clean fclean re status test-volumes clean-volumes check-volumes
+help:
+	@echo "$(GREEN)Available commands:$(RESET)"
+	@echo "  make setup      - Create necessary directories"
+	@echo "  make build      - Build Docker images"
+	@echo "  make up         - Start containers"
+	@echo "  make down       - Stop containers"
+	@echo "  make clean      - Clean up Docker resources (except volumes)"
+	@echo "  make fclean     - Remove everything including volumes and data"
+	@echo "  make re         - Rebuild everything from scratch"
+	@echo "  make status     - Show container status"
+	@echo "  make logs       - Show container logs"
+
+.PHONY: all setup build up down clean fclean re status logs help
