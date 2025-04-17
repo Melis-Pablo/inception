@@ -15,10 +15,10 @@
 - [x] Define Docker network in docker-compose.yml
 
 ## 4. MariaDB Container
-- [ ] Create Dockerfile for MariaDB
-- [ ] Configure MariaDB (without using built-in image)
-- [ ] Create initialization scripts for database and users
-- [ ] Configure volume for persistence
+- [x] Create Dockerfile for MariaDB
+- [x] Configure MariaDB (without using built-in image)
+- [x] Create initialization scripts for database and users
+- [x] Configure volume for persistence
 
 ## 5. WordPress Container
 - [ ] Create Dockerfile for WordPress with php-fpm
@@ -36,7 +36,7 @@
 - [ ] Configure all services
 - [ ] Define volumes
 - [ ] Set up networking
-- [ ] Configure restart policies
+- [x] Configure restart policies
 
 ## 8. Makefile
 - [x] Create rules for building, starting, and stopping services

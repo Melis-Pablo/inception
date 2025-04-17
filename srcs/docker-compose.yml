@@ -5,17 +5,44 @@ services:
     container_name: nginx
     networks:
       - inception_network
+    restart: unless-stopped
 
   mariadb:
     container_name: mariadb
+    build:
+      context: ./requirements/mariadb
+      dockerfile: Dockerfile
+    environment:
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+    volumes:
+      - db_data:${DB_VOLUME} # Named volume for database data persistence
+      - ./secrets/db_password.txt:/run/secrets/db_password:ro # Read-only secret for database password
+      - ./secrets/db_root_password.txt:/run/secrets/db_root_password:ro # Read-only secret for root password
     networks:
       - inception_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 
   wordpress:
     container_name: wordpress
     networks:
       - inception_network
+    restart: unless-stopped
 
 networks:
   inception_network:
     driver: bridge
+
+volumes:
+  db_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${DB_VOLUME}
+      o: bind
