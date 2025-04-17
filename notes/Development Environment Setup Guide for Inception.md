@@ -192,6 +192,17 @@ echo ".env" >> .gitignore
 echo ".DS_Store" >> .gitignore
 ```
 
+### Minimal Browser
+
+To install
+```
+sudo apt install -y firefox xorg openbox
+```
+
+Then you can start Firefox with:
+```
+startx
+```
 ### Directory Structure
 
 ```
