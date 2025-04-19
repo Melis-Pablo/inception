@@ -9,7 +9,7 @@ services:
     ports:
       - "443:443"
     volumes:
-      - wp_data:${WP_VOLUME} # Named volume for WordPress data persistence
+      - wp_data:/var/www/html/wordpress
     depends_on:
       - wordpress
     networks:
@@ -25,9 +25,10 @@ services:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
     volumes:
-      - db_data:${DB_VOLUME} # Named volume for database data persistence
-      - ./secrets/db_password.txt:/run/secrets/db_password:ro # Read-only secret for database password
-      - ./secrets/db_root_password.txt:/run/secrets/db_root_password:ro # Read-only secret for root password
+      - db_data:/var/lib/mysql
+    secrets:
+      - db_password
+      - db_root_password
     networks:
       - inception_network
     restart: unless-stopped
@@ -36,7 +37,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
 
   wordpress:
     container_name: wordpress
@@ -52,27 +52,39 @@ services:
       - WP_TITLE=${WP_TITLE}
       - WP_URL=${WP_URL}
     volumes:
-      - wp_data:${WP_VOLUME} # Named volume for WordPress data persistence
-      - ./secrets/db_password.txt:/run/secrets/db_password:ro # Read-only secret for database password
-      - ./secrets/credentials.txt:/run/secrets/credentials.txt:ro # Read-only secret for WordPress credentials
+      - wp_data:/var/www/html/wordpress
+    -secrets:
+      - db_password
+      - credentials
     networks:
       - inception_network
     restart: unless-stopped
 
 networks:
   inception_network:
+    name: inception_network
     driver: bridge
 
 volumes:
   db_data:
+    name: db_data
     driver: local
     driver_opts:
       type: none
-      device: ${DB_VOLUME}
+      device: ${DATA_PATH}/mariadb
       o: bind
   wp_data:
+    name: wp_data
     driver: local
     driver_opts:
       type: none
-      device: ${WP_VOLUME}
+      device: ${DATA_PATH}/wordpress
       o: bind
+
+secrets:
+  db_password:
+    file: ../secrets/db_password.txt
+  db_root_password:
+    file: ../secrets/db_root_password.txt
+  credentials:
+    file: ../secrets/credentials.txt

@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Debug information
+echo "MYSQL_DATABASE: ${MYSQL_DATABASE}"
+echo "MYSQL_USER: ${MYSQL_USER}"
+
 # If data directory is empty, initialize MariaDB
 if [ ! -d "/var/lib/mysql/mysql" ]; then
     echo "Initializing MariaDB database..."
@@ -30,7 +34,9 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
     mysql -e "FLUSH PRIVILEGES;"
     
     # Shutdown the temporary MariaDB server
-    mysqladmin -u root -p$(cat /run/secrets/db_root_password) shutdown
+    ROOT_PWD=$(cat /run/secrets/db_root_password)
+    mysqladmin --user=root --password="${ROOT_PWD}" shutdown
+    unset ROOT_PWD
     
     echo "MariaDB initialization completed!"
 fi

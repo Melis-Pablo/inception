@@ -1,6 +1,9 @@
 # Docker Compose file location
 COMPOSE_FILE = srcs/docker-compose.yml
 
+# Domain name for the website
+DOMAIN_NAME = pmelis.42.fr
+
 # Data directory for volumes
 DATA_DIR = /home/$(shell whoami)/data
 WORDPRESS_DATA = $(DATA_DIR)/wordpress
@@ -24,16 +27,16 @@ setup:
 
 build:
 	@echo "$(GREEN)Building Docker images...$(RESET)"
-	@docker-compose -f $(COMPOSE_FILE) build
+	@docker-compose -f $(COMPOSE_FILE) build || (echo "$(RED)Failed to stop containers!$(RESET)" && exit 1)
 
 up:
 	@echo "$(GREEN)Starting containers...$(RESET)"
-	@docker-compose -f $(COMPOSE_FILE) up -d
-	@echo "$(GREEN)Containers started! Website available at https://pmelis.42.fr$(RESET)"
+	@docker-compose -f $(COMPOSE_FILE) up -d || (echo "$(RED)Failed to stop containers!$(RESET)" && exit 1)
+	@echo "$(GREEN)Containers started! Website available at https://$(DOMAIN_NAME)$(RESET)"
 
 down:
 	@echo "$(YELLOW)Stopping containers...$(RESET)"
-	@docker-compose -f $(COMPOSE_FILE) down
+	@docker-compose -f $(COMPOSE_FILE) down || (echo "$(RED)Failed to stop containers!$(RESET)" && exit 1)
 	@echo "$(YELLOW)Containers stopped!$(RESET)"
 
 clean: down
@@ -44,7 +47,9 @@ clean: down
 fclean: clean
 	@echo "$(RED)Removing volumes and data directories...$(RESET)"
 	@docker volume prune --force
-	@sudo rm -rf $(DATA_DIR)
+	@if [ -d "$(DATA_DIR)" ]; then \
+		sudo rm -rf $(DATA_DIR); \
+	fi
 	@echo "$(RED)All data has been removed!$(RESET)"
 
 re: fclean setup build up
