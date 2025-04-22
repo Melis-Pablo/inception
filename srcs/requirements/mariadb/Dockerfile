@@ -15,16 +15,18 @@ COPY ./conf/my.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
 COPY ./tools/init-db.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/init-db.sh
 
-# Create directory for run socket
+# Create directory for run socket and logs
 RUN mkdir -p /var/run/mysqld && \
+    mkdir -p /var/log/mysql && \
     chown -R mysql:mysql /var/run/mysqld && \
+    chown -R mysql:mysql /var/log/mysql && \
     chmod 777 /var/run/mysqld
 
 # Expose MariaDB port
 EXPOSE 3306
 
 # Set entrypoint to our initialization script
-ENTRYPOINT ["init-db.sh"]
+ENTRYPOINT ["/usr/local/bin/init-db.sh"]
 
 # MariaDB as the main process (PID 1)
 CMD ["mysqld", "--user=mysql"]

@@ -24,11 +24,11 @@ setup:
 		sudo mkdir -p $(DATA_PATH); \
 		sudo chown $(USER):$(USER) $(DATA_PATH); \
 	fi
-	@mkdir -p $(DATA_PATH)/mariadb
-	@mkdir -p $(DATA_PATH)/wordpress
+	@sudo mkdir -p $(DATA_PATH)/mariadb
+	@sudo mkdir -p $(DATA_PATH)/wordpress
 	@printf "$(YELLOW)Setting up permissions...$(RESET)\n"
-	@sudo chmod 755 $(DATA_PATH)/mariadb
-	@sudo chmod 755 $(DATA_PATH)/wordpress
+	@sudo chmod -R 777 $(DATA_PATH)/mariadb
+	@sudo chmod -R 755 $(DATA_PATH)/wordpress
 	@sudo chown -R $(USER):$(USER) $(DATA_PATH)/mariadb
 	@sudo chown -R $(USER):$(USER) $(DATA_PATH)/wordpress
 	@printf "$(GREEN)Directory setup complete!$(RESET)\n"
