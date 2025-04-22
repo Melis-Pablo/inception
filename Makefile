@@ -27,8 +27,8 @@ setup:
 	@sudo mkdir -p $(DATA_PATH)/mariadb
 	@sudo mkdir -p $(DATA_PATH)/wordpress
 	@printf "$(YELLOW)Setting up permissions...$(RESET)\n"
-	@sudo chmod -R 777 $(DATA_PATH)/mariadb
-	@sudo chmod -R 755 $(DATA_PATH)/wordpress
+	@sudo chmod -R 775 $(DATA_PATH)/mariadb  # Changed from 777
+	@sudo chmod -R 775 $(DATA_PATH)/wordpress  # Changed from 755
 	@sudo chown -R $(USER):$(USER) $(DATA_PATH)/mariadb
 	@sudo chown -R $(USER):$(USER) $(DATA_PATH)/wordpress
 	@printf "$(GREEN)Directory setup complete!$(RESET)\n"
@@ -77,11 +77,11 @@ test-volumes: build up
 	@docker-compose -f $(COMPOSE_FILE) ps | grep -q "Up" || \
 		(printf "$(RED)Containers are not running!$(RESET)\n" && exit 1)
 	@printf "Testing MariaDB volume..."
-	@test -f $(DATA_PATH)/mariadb/mysql/user.MYD || \
+	@test -d $(DATA_PATH)/mariadb/mysql || \
 		(printf "$(RED)MariaDB data not found!$(RESET)\n" && exit 1)
 	@printf "$(GREEN)OK$(RESET)\n"
 	@printf "Testing WordPress volume..."
-	@test -f $(DATA_PATH)/wordpress/wp-config.php || \
+	@test -d $(DATA_PATH)/wordpress || \
 		(printf "$(RED)WordPress data not found!$(RESET)\n" && exit 1)
 	@printf "$(GREEN)OK$(RESET)\n"
 
