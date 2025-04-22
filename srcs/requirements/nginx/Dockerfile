@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directory for SSL certificates
-RUN mkdir -p /etc/nginx/ssl
+RUN mkdir -p /var/www/html \
+    && mkdir -p /etc/nginx/ssl
 
 # Generate self-signed SSL certificate
 RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \

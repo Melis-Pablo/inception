@@ -9,7 +9,7 @@ services:
     ports:
       - "443:443"
     volumes:
-      - wp_data:/var/www/html/wordpress
+      - wp_data:/var/www/html
     depends_on:
       - wordpress
     networks:
@@ -21,6 +21,8 @@ services:
     build:
       context: ./requirements/mariadb
       dockerfile: Dockerfile
+    env_file:
+      - .env
     environment:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
@@ -45,6 +47,8 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - mariadb
+    env_file:
+      - .env
     environment:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
@@ -52,13 +56,18 @@ services:
       - WP_TITLE=${WP_TITLE}
       - WP_URL=${WP_URL}
     volumes:
-      - wp_data:/var/www/html/wordpress
+      - wp_data:/var/www/wordpress
     -secrets:
       - db_password
       - credentials
     networks:
       - inception_network
     restart: unless-stopped
+    healthcheck:
+        test: ["CMD", "php-fpm81", "-t"]
+        interval: 10s
+        timeout: 5s
+        retries: 3
 
 networks:
   inception_network:
