@@ -1,53 +1,88 @@
 <?php
 /**
- * WordPress Configuration File
+ * WordPress Configuration File - Fixed version with proper environment handling
  */
 
-// ** Database settings ** //
-define( 'DB_NAME', getenv('MYSQL_DATABASE') );
-define( 'DB_USER', getenv('MYSQL_USER') );
-define( 'DB_PASSWORD', trim(file_get_contents('/run/secrets/db_password')) );
-define( 'DB_HOST', 'mariadb' );
-define( 'DB_CHARSET', 'utf8' );
-define( 'DB_COLLATE', '' );
+// For debugging during setup
+error_log('WordPress config initialization starting');
 
-// Authentication unique keys and salts
-define('AUTH_KEY',         'put your unique phrase here');
-define('SECURE_AUTH_KEY',  'put your unique phrase here');
-define('LOGGED_IN_KEY',    'put your unique phrase here');
-define('NONCE_KEY',        'put your unique phrase here');
-define('AUTH_SALT',        'put your unique phrase here');
-define('SECURE_AUTH_SALT', 'put your unique phrase here');
-define('LOGGED_IN_SALT',   'put your unique phrase here');
-define('NONCE_SALT',       'put your unique phrase here');
+// ** Database settings ** //
+// Try to get DB info from environment variables with fallbacks
+$db_name = getenv('MYSQL_DATABASE');
+$db_user = getenv('MYSQL_USER');
+$db_password = '';
+
+// Log environment variable status
+error_log('MYSQL_DATABASE from env: ' . ($db_name ? $db_name : 'NOT FOUND'));
+error_log('MYSQL_USER from env: ' . ($db_user ? $db_user : 'NOT FOUND'));
+
+// If environment variables aren't available, use hardcoded defaults
+if (empty($db_name)) $db_name = 'wordpress';
+if (empty($db_user)) $db_user = 'wp_user';
+
+// Try to read DB password from secret file
+if (file_exists('/run/secrets/db_password')) {
+    $db_password = trim(file_get_contents('/run/secrets/db_password'));
+    error_log('DB_PASSWORD read from secret file, length: ' . strlen($db_password));
+} else {
+    error_log('Secret file not found, using fallback password');
+    $db_password = 'mydbpass'; // Fallback password
+}
+
+// Define DB constants
+define('DB_NAME', $db_name);
+define('DB_USER', $db_user);
+define('DB_PASSWORD', $db_password);
+define('DB_HOST', 'mariadb');
+define('DB_CHARSET', 'utf8');
+define('DB_COLLATE', '');
+
+// Get domain from environment with fallback
+$domain = getenv('DOMAIN_NAME');
+if (empty($domain)) $domain = 'pmelis.42.fr';
+
+// Authentication unique keys and salts - these should be unique but static values work for now
+define('AUTH_KEY',         'QR*Hz#j|y:Ob}gp]+D{@vq=4eZ_;K+F-&y)|?ILQR|E1R=N,>x$+.gGl]xK6H0m|');
+define('SECURE_AUTH_KEY',  'x@{+r=mG1eQJaH{p@+$0,HK-;6o-YlG%6|VaO31+V:DwxL #+K67r{+%7EV@&>-f');
+define('LOGGED_IN_KEY',    '3l6a/$1F-WS*bZXW2|EI-j5<|9!+h3/tM+o7n5FI|{aIWl%Z4GeDJw9bD&fMsR=f');
+define('NONCE_KEY',        'QiPF<G%3P?|FzS^*g0vbfYD8z-d3&C5fRR=m$yN?!_Z-U94E0T+2X{<k,g-hQxmc');
+define('AUTH_SALT',        'j:uA+g-n+f.1IB*cxDf3OC-P?t|;M8A<e:X+/V(45]h%0d$t{J<jEXo`n0SU;*)K');
+define('SECURE_AUTH_SALT', 'Zx45~tij-o<4<t)~E7,?I$U{V:A]+/7{Y]N|*t&^9-Yjl,b+RHFwPWnGS+tCQzA6');
+define('LOGGED_IN_SALT',   '$TrAc}6R+{W:-l;fB>>iJE$H|hwj>5$Wx1IM.X*8Yx|j9Q/zK2-/fpC?rBBs+iGH');
+define('NONCE_SALT',       '>Cfy>T!g9k=z+O4Rl$TDOX;+:AYO1jba|t|x|XSN1oq#0Jw&P(3_1Oi+HI@?!1SJ');
 
 // WordPress database table prefix
 $table_prefix = 'wp_';
 
-// Debug mode
-define( 'WP_DEBUG', true );
-define( 'WP_DEBUG_LOG', true );
-define( 'WP_DEBUG_DISPLAY', false );
+// For debugging
+define('WP_DEBUG', true);
+define('WP_DEBUG_LOG', true);
+define('WP_DEBUG_DISPLAY', false);
 
 // If we're behind a proxy server and using HTTPS, we need to alert WordPress of that fact
-if ( isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' ) {
+if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
     $_SERVER['HTTPS'] = 'on';
 }
 
-// WordPress address (URL) settings
-define( 'WP_SITEURL', 'https://' . getenv('DOMAIN_NAME') );
-define( 'WP_HOME', 'https://' . getenv('DOMAIN_NAME') );
+// Site URL settings
+define('WP_SITEURL', 'https://' . $domain);
+define('WP_HOME', 'https://' . $domain);
 
-// Increase memory limit
-define( 'WP_MEMORY_LIMIT', '256M' );
+// Performance settings
+define('WP_MEMORY_LIMIT', '256M');
+define('AUTOMATIC_UPDATER_DISABLED', true);
 
-// Disable automatic updates
-define( 'AUTOMATIC_UPDATER_DISABLED', true );
+// Log final database connection parameters (remove in production)
+error_log('Final DB connection parameters:');
+error_log('DB_NAME: ' . DB_NAME);
+error_log('DB_USER: ' . DB_USER);
+error_log('DB_HOST: ' . DB_HOST);
+error_log('DB_PASSWORD length: ' . strlen(DB_PASSWORD));
 
 // Absolute path to the WordPress directory
-if ( ! defined( 'ABSPATH' ) ) {
-    define( 'ABSPATH', __DIR__ . '/' );
+if (!defined('ABSPATH')) {
+    define('ABSPATH', __DIR__ . '/');
 }
 
-// Sets up WordPress vars and included files
+// Load WordPress settings
 require_once ABSPATH . 'wp-settings.php';
