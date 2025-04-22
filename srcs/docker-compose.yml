@@ -9,7 +9,7 @@ services:
     ports:
       - "443:443"
     volumes:
-      - wp_data:/var/www/html
+      - wp_data:/var/www/html/wordpress
     depends_on:
       - wordpress
     networks:
@@ -65,10 +65,10 @@ services:
       - inception_network
     restart: unless-stopped
     healthcheck:
-        test: ["CMD", "php-fpm7.4", "-t"]
-        interval: 10s
-        timeout: 5s
-        retries: 3
+      test: ["CMD", "php-fpm7.4", "-t"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 networks:
   inception_network:

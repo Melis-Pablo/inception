@@ -8,20 +8,31 @@ echo "DOMAIN_NAME: ${DOMAIN_NAME}"
 echo "WP_TITLE: ${WP_TITLE}"
 echo "WP_URL: ${WP_URL}"
 
-# Wait for MariaDB to be ready
-echo "Waiting for MariaDB to be ready..."
+# Get DB password from secrets
+DB_PASSWORD=$(cat /run/secrets/db_password)
+
+# Try to connect to the database with proper error handling
 for i in {1..30}; do
-    if mysql -h mariadb -u "${MYSQL_USER}" -p"$(cat /run/secrets/db_password)" -e "SHOW DATABASES;" &>/dev/null; then
-        echo "MariaDB connection successful!"
+    echo "Attempt $i/30: Trying to connect to MariaDB..."
+    
+    if mysql -h mariadb -u "${MYSQL_USER}" -p"${DB_PASSWORD}" -e "USE ${MYSQL_DATABASE};" 2>/dev/null; then
+        echo "Successfully connected to MariaDB database!"
+        CONNECTION_SUCCESSFUL=true
         break
     fi
-    echo "Attempt $i/30: MariaDB not ready yet. Waiting..."
+    
+    echo "Connection failed. MySQL error:"
+    mysql -h mariadb -u "${MYSQL_USER}" -p"${DB_PASSWORD}" -e "USE ${MYSQL_DATABASE};" 2>&1 || true
+    
     if [ $i -eq 30 ]; then
         echo "ERROR: Could not connect to MariaDB after 30 attempts"
-        echo "Last error:"
-        mysql -h mariadb -u "${MYSQL_USER}" -p"$(cat /run/secrets/db_password)" -e "SHOW DATABASES;" || true
+        echo "Detailed connection attempt:"
+        mysql -v -h mariadb -u "${MYSQL_USER}" -p"${DB_PASSWORD}" -e "USE ${MYSQL_DATABASE};" || true
+        echo "Trying fallback direct connection test..."
+        nc -zv mariadb 3306 || true
         exit 1
     fi
+    
     sleep 5
 done
 
@@ -29,14 +40,25 @@ done
 echo "Setting proper permissions for WordPress files"
 chown -R www-data:www-data /var/www/html/wordpress
 
-# Check if WordPress config is already adjusted
-if ! grep -q "define.*DB_PASSWORD.*\/run\/secrets\/db_password" /var/www/html/wordpress/wp-config.php; then
+# Check if WordPress config is properly set up
+if ! grep -q "DB_PASSWORD.*run/secrets/db_password" /var/www/html/wordpress/wp-config.php; then
     echo "Updating wp-config.php with proper configuration..."
+    
+    # Generate random keys
     WP_SALT=$(curl -s https://api.wordpress.org/secret-key/1.1/salt/)
-    sed -i "s/put your unique phrase here/$(echo $WP_SALT | sed -e 's/[\/&]/\\&/g')/g" /var/www/html/wordpress/wp-config.php
-    sed -i "s/database_name_here/${MYSQL_DATABASE}/g" /var/www/html/wordpress/wp-config.php
-    sed -i "s/username_here/${MYSQL_USER}/g" /var/www/html/wordpress/wp-config.php
-    echo "WordPress configuration updated"
+    # Replace default salts with random ones
+    sed -i "/AUTH_KEY/,/NONCE_SALT/c\\
+define('AUTH_KEY',         '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');\\
+define('SECURE_AUTH_KEY',  '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');\\
+define('LOGGED_IN_KEY',    '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');\\
+define('NONCE_KEY',        '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');\\
+define('AUTH_SALT',        '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');\\
+define('SECURE_AUTH_SALT', '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');\\
+define('LOGGED_IN_SALT',   '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');\\
+define('NONCE_SALT',       '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');\\
+" /var/www/html/wordpress/wp-config.php
+    
+    echo "WordPress configuration updated with new salt keys"
 fi
 
 # Check if WordPress is already installed
@@ -45,17 +67,29 @@ if ! wp core is-installed --path="/var/www/html/wordpress" --allow-root 2>/dev/n
     echo "WordPress not installed. Installing..."
     
     # Get admin credentials from secrets
-    WP_ADMIN_USER=$(grep -oP 'WP_ADMIN_USER=\K[^\n]+' /run/secrets/credentials)
-    WP_ADMIN_PASSWORD=$(grep -oP 'WP_ADMIN_PASSWORD=\K[^\n]+' /run/secrets/credentials)
-    WP_ADMIN_EMAIL=$(grep -oP 'WP_ADMIN_EMAIL=\K[^\n]+' /run/secrets/credentials)
+    WP_ADMIN_USER=$(grep -oP 'WP_ADMIN_USER=\K[^\n]+' /run/secrets/credentials || echo "manager")
+    WP_ADMIN_PASSWORD=$(grep -oP 'WP_ADMIN_PASSWORD=\K[^\n]+' /run/secrets/credentials || echo "manager_password")
+    WP_ADMIN_EMAIL=$(grep -oP 'WP_ADMIN_EMAIL=\K[^\n]+' /run/secrets/credentials || echo "admin@example.com")
     
     # Get regular user credentials from secrets
-    WP_REGULAR_USER=$(grep -oP 'WP_REGULAR_USER=\K[^\n]+' /run/secrets/credentials)
-    WP_REGULAR_PASSWORD=$(grep -oP 'WP_REGULAR_PASSWORD=\K[^\n]+' /run/secrets/credentials)
-    WP_REGULAR_EMAIL=$(grep -oP 'WP_REGULAR_EMAIL=\K[^\n]+' /run/secrets/credentials)
+    WP_REGULAR_USER=$(grep -oP 'WP_REGULAR_USER=\K[^\n]+' /run/secrets/credentials || echo "user1")
+    WP_REGULAR_PASSWORD=$(grep -oP 'WP_REGULAR_PASSWORD=\K[^\n]+' /run/secrets/credentials || echo "user1_password")
+    WP_REGULAR_EMAIL=$(grep -oP 'WP_REGULAR_EMAIL=\K[^\n]+' /run/secrets/credentials || echo "user1@example.com")
     
     echo "Admin user: $WP_ADMIN_USER"
     echo "Regular user: $WP_REGULAR_USER"
+    
+    # Create wp-config.php directly with wp-cli if it doesn't exist
+    if [ ! -f "/var/www/html/wordpress/wp-config.php" ]; then
+        echo "Creating wp-config.php with wp-cli..."
+        wp config create \
+            --path="/var/www/html/wordpress" \
+            --dbname="${MYSQL_DATABASE}" \
+            --dbuser="${MYSQL_USER}" \
+            --dbpass="${DB_PASSWORD}" \
+            --dbhost="mariadb" \
+            --allow-root
+    fi
     
     # Install WordPress
     echo "Installing WordPress core..."

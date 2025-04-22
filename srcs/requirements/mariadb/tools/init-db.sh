@@ -12,6 +12,10 @@ ls -la /var/lib/mysql
 chown -R mysql:mysql /var/lib/mysql
 chmod 755 /var/lib/mysql
 
+# Read passwords from secrets
+DB_PASSWORD=$(cat /run/secrets/db_password)
+ROOT_PASSWORD=$(cat /run/secrets/db_root_password)
+
 # If data directory is empty, initialize MariaDB
 if [ ! -d "/var/lib/mysql/mysql" ]; then
     echo "MariaDB data directory is empty, initializing..."
@@ -51,10 +55,6 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
     echo "Creating database '${MYSQL_DATABASE}'..."
     mysql -e "CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;"
     
-    # Read passwords from secrets
-    DB_PASSWORD=$(cat /run/secrets/db_password)
-    ROOT_PASSWORD=$(cat /run/secrets/db_root_password)
-    
     echo "Creating user '${MYSQL_USER}'..."
     mysql -e "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
     mysql -e "GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';"
@@ -72,12 +72,74 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
     mysqladmin --user=root --password="${ROOT_PASSWORD}" shutdown
     
     echo "MariaDB initialization completed!"
-    echo "Data directory contents after initialization:"
-    ls -la /var/lib/mysql
 else
     echo "MariaDB data directory already contains database files"
-    ls -la /var/lib/mysql/mysql
+    
+    # Start MariaDB in the background to check/fix the setup
+    echo "Starting temporary MariaDB server to verify database setup..."
+    mysqld --user=mysql &
+    MYSQL_PID=$!
+    
+    # Wait for MariaDB to start up
+    echo "Waiting for MariaDB to be ready..."
+    for i in {1..30}; do
+        if mysqladmin ping -h localhost --silent; then
+            echo "MariaDB is ready!"
+            break
+        fi
+        echo "Waiting for MariaDB... (attempt $i/30)"
+        sleep 2
+    done
+    
+    # Check if our database and user exist, create them if not
+    echo "Verifying database and user setup..."
+    
+    # Try to connect as root without password first
+    if mysql -e "SELECT 'Root access working';" &>/dev/null; then
+        echo "Root access without password - setting up root password"
+        mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '${ROOT_PASSWORD}';"
+        ROOT_AUTH="-p${ROOT_PASSWORD}"
+    else
+        # Try with password from secrets
+        ROOT_AUTH="-p${ROOT_PASSWORD}"
+        if ! mysql -uroot ${ROOT_AUTH} -e "SELECT 'Root access working';" &>/dev/null; then
+            echo "WARNING: Could not authenticate as root to fix database setup"
+            # Continue anyway as the server will start
+        fi
+    fi
+    
+    # Check and create database and user if we have root access
+    if mysql -uroot ${ROOT_AUTH} -e "SELECT 'Root access working';" &>/dev/null; then
+        # Check if database exists
+        if ! mysql -uroot ${ROOT_AUTH} -e "USE \`${MYSQL_DATABASE}\`;" &>/dev/null; then
+            echo "Database '${MYSQL_DATABASE}' does not exist, creating..."
+            mysql -uroot ${ROOT_AUTH} -e "CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;"
+        else
+            echo "Database '${MYSQL_DATABASE}' already exists"
+        fi
+        
+        # Check if user exists
+        USER_EXISTS=$(mysql -uroot ${ROOT_AUTH} -e "SELECT User FROM mysql.user WHERE User='${MYSQL_USER}' AND Host='%';" | grep -c "${MYSQL_USER}" || true)
+        if [ "$USER_EXISTS" -eq 0 ]; then
+            echo "User '${MYSQL_USER}' does not exist, creating..."
+            mysql -uroot ${ROOT_AUTH} -e "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
+            mysql -uroot ${ROOT_AUTH} -e "GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';"
+            mysql -uroot ${ROOT_AUTH} -e "FLUSH PRIVILEGES;"
+        else
+            echo "User '${MYSQL_USER}' already exists, updating password..."
+            mysql -uroot ${ROOT_AUTH} -e "ALTER USER '${MYSQL_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
+            mysql -uroot ${ROOT_AUTH} -e "GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';"
+            mysql -uroot ${ROOT_AUTH} -e "FLUSH PRIVILEGES;"
+        fi
+    fi
+    
+    # Shutdown the temporary MariaDB server
+    echo "Shutting down temporary MariaDB server..."
+    mysqladmin -uroot ${ROOT_AUTH} shutdown || kill ${MYSQL_PID}
 fi
+
+echo "Data directory contents after setup:"
+ls -la /var/lib/mysql
 
 echo "Starting MariaDB with command: $@"
 
