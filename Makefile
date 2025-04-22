@@ -88,11 +88,11 @@ test-volumes: build up
 status:
 	@echo "$(GREEN)Container status:$(RESET)"
 	@docker-compose -f $(COMPOSE_FILE) ps
-	@echo "$(GREEN)\nDocker images:"
+	@echo "$(GREEN)\nDocker images:$(RESET)"
 	@docker ps
-	@echo "$(GREEN)\nVolumes:"
+	@echo "$(GREEN)\nVolumes:$(RESET)"
 	@docker volume ls
-	@echo "$(GREEN)\nNetworks:"
+	@echo "$(GREEN)\nNetworks:$(RESET)"
 	@docker network ls
 
 logs:
