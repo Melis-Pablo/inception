@@ -6,19 +6,31 @@
 // For debugging during setup
 error_log('WordPress config initialization starting');
 
-// ** Database settings ** //
+// More robust environment variable retrieval
+function get_env_var($name, $default = '') {
+    // Try multiple methods to get environment variables
+    $value = getenv($name);
+    
+    // Check $_ENV superglobal as an alternative
+    if (empty($value) && isset($_ENV[$name])) {
+        $value = $_ENV[$name];
+    }
+    
+    // Check $_SERVER as a last resort
+    if (empty($value) && isset($_SERVER[$name])) {
+        $value = $_SERVER[$name];
+    }
+    
+    // Log environment variable attempt
+    error_log("Getting env var $name: " . (empty($value) ? "NOT FOUND, using default: $default" : "FOUND: $value"));
+    
+    return empty($value) ? $default : $value;
+}
+
 // Try to get DB info from environment variables with fallbacks
-$db_name = getenv('MYSQL_DATABASE');
-$db_user = getenv('MYSQL_USER');
+$db_name = get_env_var('MYSQL_DATABASE', 'wordpress');
+$db_user = get_env_var('MYSQL_USER', 'wp_user');
 $db_password = '';
-
-// Log environment variable status
-error_log('MYSQL_DATABASE from env: ' . ($db_name ? $db_name : 'NOT FOUND'));
-error_log('MYSQL_USER from env: ' . ($db_user ? $db_user : 'NOT FOUND'));
-
-// If environment variables aren't available, use hardcoded defaults
-if (empty($db_name)) $db_name = 'wordpress';
-if (empty($db_user)) $db_user = 'wp_user';
 
 // Try to read DB password from secret file
 if (file_exists('/run/secrets/db_password')) {
@@ -38,8 +50,7 @@ define('DB_CHARSET', 'utf8');
 define('DB_COLLATE', '');
 
 // Get domain from environment with fallback
-$domain = getenv('DOMAIN_NAME');
-if (empty($domain)) $domain = 'pmelis.42.fr';
+$domain = get_env_var('DOMAIN_NAME', 'pmelis.42.fr');
 
 // Authentication unique keys and salts - these should be unique but static values work for now
 define('AUTH_KEY',         'QR*Hz#j|y:Ob}gp]+D{@vq=4eZ_;K+F-&y)|?ILQR|E1R=N,>x$+.gGl]xK6H0m|');

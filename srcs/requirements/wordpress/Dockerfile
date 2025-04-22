@@ -25,6 +25,10 @@ RUN apt-get update && apt-get install -y \
 # Configure PHP-FPM
 COPY ./conf/www.conf /etc/php/7.4/fpm/pool.d/www.conf
 
+# Ensure PHP-FPM passes environment variables by default
+RUN echo "\n; Environment variable settings" >> /etc/php/7.4/fpm/php-fpm.conf && \
+    echo "clear_env = no" >> /etc/php/7.4/fpm/php-fpm.conf
+
 # Create directory for PHP-FPM to store its PID file and socket
 RUN mkdir -p /run/php && \
     chmod 755 /run/php
@@ -43,6 +47,9 @@ RUN mkdir -p /var/www/html && \
 
 # Copy WordPress configuration file
 COPY ./conf/wp-config.php /var/www/html/wordpress/
+
+# Copy environment variable test file
+COPY ./tools/env-test.php /var/www/html/wordpress/
 
 # Copy initialization script
 COPY ./tools/init-wordpress.sh /usr/local/bin/

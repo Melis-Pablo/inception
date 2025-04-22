@@ -2,11 +2,27 @@
 set -e
 
 echo "Starting WordPress initialization..."
+echo "===== Environment Variables ====="
 echo "MYSQL_DATABASE: ${MYSQL_DATABASE}"
 echo "MYSQL_USER: ${MYSQL_USER}"
 echo "DOMAIN_NAME: ${DOMAIN_NAME}"
 echo "WP_TITLE: ${WP_TITLE}"
 echo "WP_URL: ${WP_URL}"
+
+# Create a debug file to verify environment variables
+echo "Creating debug file for environment variables..."
+env > /var/www/html/env_debug.txt
+
+# Ensure environment variables are passed to PHP
+echo "Updating PHP-FPM configuration to pass environment variables..."
+grep -q "env\[MYSQL_DATABASE\]" /etc/php/7.4/fpm/pool.d/www.conf || {
+    echo "env[MYSQL_DATABASE] = \$MYSQL_DATABASE" >> /etc/php/7.4/fpm/pool.d/www.conf
+    echo "env[MYSQL_USER] = \$MYSQL_USER" >> /etc/php/7.4/fpm/pool.d/www.conf
+    echo "env[DOMAIN_NAME] = \$DOMAIN_NAME" >> /etc/php/7.4/fpm/pool.d/www.conf
+    echo "env[WP_TITLE] = \$WP_TITLE" >> /etc/php/7.4/fpm/pool.d/www.conf
+    echo "env[WP_URL] = \$WP_URL" >> /etc/php/7.4/fpm/pool.d/www.conf
+    echo "clear_env = no" >> /etc/php/7.4/fpm/pool.d/www.conf
+}
 
 # Get DB password from secrets
 DB_PASSWORD=$(cat /run/secrets/db_password)
@@ -123,6 +139,17 @@ fi
 # Final permission setup
 echo "Setting final permissions for WordPress files"
 chown -R www-data:www-data /var/www/html/wordpress
+
+# Create a PHP info file to test environment variables
+cat > /var/www/html/wordpress/phpinfo.php << 'EOF'
+<?php
+phpinfo();
+EOF
+
+# Test PHP environment variables directly
+echo "Testing PHP environment variable access..."
+php -r "echo 'MYSQL_DATABASE via PHP: ' . getenv('MYSQL_DATABASE') . \"\n\";"
+php -r "echo 'MYSQL_USER via PHP: ' . getenv('MYSQL_USER') . \"\n\";"
 
 echo "Starting PHP-FPM with command: $@"
 # Start PHP-FPM
