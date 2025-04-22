@@ -1,14 +1,10 @@
 # Docker Compose file location
 COMPOSE_FILE = srcs/docker-compose.yml
 
-# Domain name for the website
-DOMAIN_NAME = pmelis.42.fr
-
 # Data directory for volumes
 USER ?= $(shell whoami)
+DOMAIN_NAME = $(USER).42.fr
 DATA_PATH = /home/$(USER)/data
-WORDPRESS_DATA = $(DATA_PATH)/wordpress
-MARIADB_DATA = $(DATA_PATH)/mariadb
 
 # Colors for output
 GREEN = \033[0;32m
@@ -26,23 +22,23 @@ setup:
 	fi
 	@sudo mkdir -p $(DATA_PATH)/mariadb
 	@sudo mkdir -p $(DATA_PATH)/wordpress
-	@printf "$(YELLOW)Setting up permissions...$(RESET)\n"
-	@sudo chmod -R 775 $(DATA_PATH)/mariadb  # Changed from 777
-	@sudo chmod -R 775 $(DATA_PATH)/wordpress  # Changed from 755
+	@echo "$(YELLOW)Setting up permissions...$(RESET)"
+	@sudo chmod -R 775 $(DATA_PATH)/mariadb
+	@sudo chmod -R 775 $(DATA_PATH)/wordpress
 	@sudo chown -R $(USER):$(USER) $(DATA_PATH)/mariadb
 	@sudo chown -R $(USER):$(USER) $(DATA_PATH)/wordpress
-	@printf "$(GREEN)Directory setup complete!$(RESET)\n"
+	@echo "$(GREEN)Directory setup complete!$(RESET)"
 	@echo "$(GREEN)Data directories created at:$(RESET)"
 	@echo "WordPress: $(DATA_PATH)/wordpress"
 	@echo "MariaDB: $(DATA_PATH)/mariadb"
 
 build:
 	@echo "$(GREEN)Building Docker images...$(RESET)"
-	@docker-compose -f $(COMPOSE_FILE) build || (echo "$(RED)Failed to stop containers!$(RESET)" && exit 1)
+	@docker-compose -f $(COMPOSE_FILE) build || (echo "$(RED)Failed to build images!$(RESET)" && exit 1)
 
 up: check-volumes
 	@echo "$(GREEN)Starting containers...$(RESET)"
-	@docker-compose -f $(COMPOSE_FILE) up -d || (echo "$(RED)Failed to stop containers!$(RESET)" && exit 1)
+	@docker-compose -f $(COMPOSE_FILE) up -d || (echo "$(RED)Failed to start containers!$(RESET)" && exit 1)
 	@echo "$(GREEN)Containers started! Website available at https://$(DOMAIN_NAME)$(RESET)"
 
 down:
@@ -65,7 +61,6 @@ fclean: clean
 
 re: fclean setup build up
 
-# Add a volume check target
 check-volumes:
 	@if [ ! -d "$(DATA_PATH)/mariadb" ] || [ ! -d "$(DATA_PATH)/wordpress" ]; then \
 		printf "$(RED)Volumes not set up. Running setup...$(RESET)\n" && \
@@ -101,14 +96,16 @@ logs:
 
 help:
 	@echo "$(GREEN)Available commands:$(RESET)"
-	@echo "  make setup      - Create necessary directories"
-	@echo "  make build      - Build Docker images"
-	@echo "  make up         - Start containers"
-	@echo "  make down       - Stop containers"
-	@echo "  make clean      - Clean up Docker resources (except volumes)"
-	@echo "  make fclean     - Remove everything including volumes and data"
-	@echo "  make re         - Rebuild everything from scratch"
-	@echo "  make status     - Show container status"
-	@echo "  make logs       - Show container logs"
+	@echo "  make setup         - Create necessary directories"
+	@echo "  make build         - Build Docker images"
+	@echo "  make up            - Start containers"
+	@echo "  make down          - Stop containers"
+	@echo "  make clean         - Clean up Docker resources (except volumes)"
+	@echo "  make fclean        - Remove everything including volumes and data"
+	@echo "  make re            - Rebuild everything from scratch"
+	@echo "  make check-volumes - Check if volumes are set up"
+	@echo "  make test-volumes  - Test volume persistence"
+	@echo "  make status        - Show container status"
+	@echo "  make logs          - Show container logs"
 
 .PHONY: all setup build up down clean fclean re status logs help check-volumes test-volumes
