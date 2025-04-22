@@ -57,7 +57,7 @@ services:
       - WP_URL=${WP_URL}
     volumes:
       - wp_data:/var/www/wordpress
-    -secrets:
+    secrets:
       - db_password
       - credentials
     networks:
