@@ -74,7 +74,7 @@ check-volumes:
 
 test-volumes: build up
 	@printf "$(YELLOW)Testing volume persistence...$(RESET)\n"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) ps | grep -q "Up" || \
+	@docker-compose -f $(COMPOSE_FILE) ps | grep -q "Up" || \
 		(printf "$(RED)Containers are not running!$(RESET)\n" && exit 1)
 	@printf "Testing MariaDB volume..."
 	@test -f $(DATA_PATH)/mariadb/mysql/user.MYD || \
