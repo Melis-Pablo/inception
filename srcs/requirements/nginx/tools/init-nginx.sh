@@ -2,7 +2,7 @@
 set -e
 
 # Replace environment variables in the Nginx conf
-envsubst '${DOMAIN_NAME}' < /etc/nginx/templates/default.conf > /etc/nginx/conf.d/default.conf
+envsubst '${DOMAIN_NAME}' < /etc/nginx/conf.d/default.conf > /etc/nginx/conf.d/default.conf
 
 # Generate SSL certificate if it doesn't exist
 if [ ! -f /etc/nginx/ssl/nginx.crt ]; then
