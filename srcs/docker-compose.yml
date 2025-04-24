@@ -81,14 +81,14 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: ${DATA_PATH}/mariadb
+      device: ${DB_PATH}
       o: bind
   wp_data:
     name: wp_data
     driver: local
     driver_opts:
       type: none
-      device: ${DATA_PATH}/wordpress
+      device: ${WP_PATH}
       o: bind
 
 secrets:
