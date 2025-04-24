@@ -44,7 +44,35 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
     mysqladmin --user=root --password="${ROOT_PASSWORD}" shutdown
     echo "MariaDB initialization completed"
 else
-    echo "MariaDB data directory already exists"
+    echo "MariaDB data directory already exists, verifying configuration..."
+    
+    # Start MariaDB temporarily to update permissions
+    mysqld --user=mysql &
+    MYSQL_PID=$!
+    
+    # Wait for MariaDB to start
+    until mysqladmin ping -h localhost --silent; do
+        sleep 1
+        if ! ps -p $MYSQL_PID > /dev/null; then
+            echo "MariaDB process died"
+            exit 1
+        fi
+    done
+    
+    # Try to access as root
+    if mysql -uroot -p"${ROOT_PASSWORD}" -e "SELECT 'Root access working';" &>/dev/null; then
+        # Update database and user
+        mysql -uroot -p"${ROOT_PASSWORD}" -e "CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\`;"
+        mysql -uroot -p"${ROOT_PASSWORD}" -e "CREATE USER IF NOT EXISTS '${MYSQL_USER}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
+        mysql -uroot -p"${ROOT_PASSWORD}" -e "GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE}\`.* TO '${MYSQL_USER}'@'%';"
+        mysql -uroot -p"${ROOT_PASSWORD}" -e "FLUSH PRIVILEGES;"
+        echo "Database permissions updated"
+    else
+        echo "Warning: Could not authenticate as root to update permissions"
+    fi
+    
+    # Shutdown the temporary server
+    mysqladmin -uroot -p"${ROOT_PASSWORD}" shutdown || kill ${MYSQL_PID}
 fi
 
 # Start the main MariaDB process
