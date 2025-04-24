@@ -6,21 +6,15 @@ RUN apt-get update && apt-get install -y \
     mariadb-server \
     mariadb-client \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /var/run/mysqld /var/log/mysql \
+    && chown -R mysql:mysql /var/run/mysqld /var/log/mysql \
+    && chmod 750 /var/run/mysqld
 
-# Copy configuration file
+# Copy configuration file and initialization script
 COPY ./conf/my.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
-
-# Copy initialization script
 COPY ./tools/init-db.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/init-db.sh
-
-# Create directory for run socket and logs
-RUN mkdir -p /var/run/mysqld && \
-    mkdir -p /var/log/mysql && \
-    chown -R mysql:mysql /var/run/mysqld && \
-    chown -R mysql:mysql /var/log/mysql && \
-    chmod 777 /var/run/mysqld
 
 # Expose MariaDB port
 EXPOSE 3306
