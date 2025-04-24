@@ -13,11 +13,10 @@ RUN apt-get update && apt-get install -y \
     && mkdir -p /etc/nginx/templates
 
 # Copy template instead of final config
-COPY ./conf/default.conf.template /etc/nginx/templates/
+COPY ./conf/default.conf.template /etc/nginx/templates/default.conf.template
 
 # Copy NGINX configuration
 COPY ./conf/nginx.conf /etc/nginx/nginx.conf
-COPY ./conf/default.conf /etc/nginx/conf.d/default.conf
 
 # Copy initialization script
 COPY ./tools/init-nginx.sh /usr/local/bin/
