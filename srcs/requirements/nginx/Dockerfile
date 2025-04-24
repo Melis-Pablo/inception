@@ -5,25 +5,22 @@ FROM debian:bullseye
 RUN apt-get update && apt-get install -y \
     nginx \
     openssl \
-    iputils-ping \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN mkdir -p /var/www/html \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /var/www/html \
     && mkdir -p /etc/nginx/ssl
-
-# Generate self-signed SSL certificate
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /etc/nginx/ssl/nginx.key \
-    -out /etc/nginx/ssl/nginx.crt \
-    -subj "/C=XX/ST=State/L=City/O=Organization/CN=pmelis.42.fr"
 
 # Copy NGINX configuration
 COPY ./conf/nginx.conf /etc/nginx/nginx.conf
 COPY ./conf/default.conf /etc/nginx/conf.d/default.conf
 
+# Copy initialization script
+COPY ./tools/init-nginx.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/init-nginx.sh
+
 # Expose HTTPS port
 EXPOSE 443
 
 # Start NGINX in foreground mode
+ENTRYPOINT [ "/usr/local/bin/init-nginx.sh" ]
 CMD ["nginx", "-g", "daemon off;"]
