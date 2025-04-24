@@ -5,10 +5,15 @@ FROM debian:bullseye
 RUN apt-get update && apt-get install -y \
     nginx \
     openssl \
+    gettext-base \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /var/www/html \
-    && mkdir -p /etc/nginx/ssl
+    && mkdir -p /etc/nginx/ssl \
+    && mkdir -p /etc/nginx/templates
+
+# Copy template instead of final config
+COPY ./conf/default.conf.template /etc/nginx/templates/
 
 # Copy NGINX configuration
 COPY ./conf/nginx.conf /etc/nginx/nginx.conf
