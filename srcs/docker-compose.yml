@@ -15,7 +15,8 @@ services:
     volumes:
       - wp_data:/var/www/html/wordpress
     depends_on:
-      - wordpress
+      wordpress:
+        condition: service_healthy
     networks:
       - inception_network
     restart: unless-stopped

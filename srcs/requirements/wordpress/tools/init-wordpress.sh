@@ -35,12 +35,15 @@ if ! wp core is-installed --path="/var/www/html/wordpress" --allow-root 2>/dev/n
     WP_REGULAR_PASSWORD=$(grep -oP 'WP_REGULAR_PASSWORD=\K[^\n]+' /run/secrets/credentials)
     WP_REGULAR_EMAIL=$(grep -oP 'WP_REGULAR_EMAIL=\K[^\n]+' /run/secrets/credentials)
     
-    # Generate random keys for wp-config.php
-    WP_SALT=$(curl -s https://api.wordpress.org/secret-key/1.1/salt/)
-    # Replace placeholder salts with random ones
-    sed -i "/AUTH_KEY/,/NONCE_SALT/c\\
-${WP_SALT}\\
-" /var/www/html/wordpress/wp-config.php
+    # Fix for salt generation - use individual keys instead of API
+    sed -i "s/define('AUTH_KEY',         'placeholder');/define('AUTH_KEY',         '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');/" /var/www/html/wordpress/wp-config.php
+    sed -i "s/define('SECURE_AUTH_KEY',  'placeholder');/define('SECURE_AUTH_KEY',  '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');/" /var/www/html/wordpress/wp-config.php
+    sed -i "s/define('LOGGED_IN_KEY',    'placeholder');/define('LOGGED_IN_KEY',    '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');/" /var/www/html/wordpress/wp-config.php
+    sed -i "s/define('NONCE_KEY',        'placeholder');/define('NONCE_KEY',        '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');/" /var/www/html/wordpress/wp-config.php
+    sed -i "s/define('AUTH_SALT',        'placeholder');/define('AUTH_SALT',        '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');/" /var/www/html/wordpress/wp-config.php
+    sed -i "s/define('SECURE_AUTH_SALT', 'placeholder');/define('SECURE_AUTH_SALT', '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');/" /var/www/html/wordpress/wp-config.php
+    sed -i "s/define('LOGGED_IN_SALT',   'placeholder');/define('LOGGED_IN_SALT',   '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');/" /var/www/html/wordpress/wp-config.php
+    sed -i "s/define('NONCE_SALT',       'placeholder');/define('NONCE_SALT',       '$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 64)');/" /var/www/html/wordpress/wp-config.php
     
     # Install WordPress
     wp core install \
