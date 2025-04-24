@@ -63,7 +63,7 @@ Your NGINX container must be the sole entry point into your infrastructure, acce
 >To complete the bonus part, you have the possibility to set up extra services. In this case, you may open more ports to suit your needs.
 
 ### Diagram
-![Diagram](/Diagram.png)
+![Diagram](images/Diagram.png)
 
 ### Directory structure:
 

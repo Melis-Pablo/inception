@@ -43,6 +43,7 @@
 - [x] Implement clean-up and reset functionality
 
 ## 9. Testing
+- [ ] Create script to test all requirements
 - [ ] Test entire setup
 - [ ] Verify all requirements are met
 - [ ] Test automatic restart capability
