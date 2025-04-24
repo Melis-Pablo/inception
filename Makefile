@@ -1,12 +1,7 @@
+-include srcs/.env
+
 # Docker Compose file location
 COMPOSE_FILE = srcs/docker-compose.yml
-
-# Data directory for volumes
-USER ?= $(shell whoami)
-DOMAIN_NAME = $(USER).42.fr
-DATA_PATH = /home/$(USER)/data
-DB_PATH = $(DATA_PATH)/mariadb
-WP_PATH = $(DATA_PATH)/wordpress
 
 # Colors for output
 GREEN = \033[0;32m
