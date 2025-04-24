@@ -10,11 +10,8 @@ RUN apt-get update && apt-get install -y \
     php7.4-mysql \
     php7.4-curl \
     php7.4-gd \
-    php7.4-intl \
     php7.4-mbstring \
-    php7.4-soap \
     php7.4-xml \
-    php7.4-xmlrpc \
     php7.4-zip \
     curl \
     wget \
@@ -24,10 +21,6 @@ RUN apt-get update && apt-get install -y \
 
 # Configure PHP-FPM
 COPY ./conf/www.conf /etc/php/7.4/fpm/pool.d/www.conf
-
-# Ensure PHP-FPM passes environment variables by default
-RUN echo "\n; Environment variable settings" >> /etc/php/7.4/fpm/php-fpm.conf && \
-    echo "clear_env = no" >> /etc/php/7.4/fpm/php-fpm.conf
 
 # Create directory for PHP-FPM to store its PID file and socket
 RUN mkdir -p /run/php && \
@@ -48,9 +41,6 @@ RUN mkdir -p /var/www/html && \
 # Copy WordPress configuration file
 COPY ./conf/wp-config.php /var/www/html/wordpress/
 
-# Copy environment variable test file
-COPY ./tools/env-test.php /var/www/html/wordpress/
-
 # Copy initialization script
 COPY ./tools/init-wordpress.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/init-wordpress.sh
@@ -62,5 +52,5 @@ WORKDIR /var/www/html/wordpress
 EXPOSE 9000
 
 # Run the initialization script, then start PHP-FPM in foreground mode
-ENTRYPOINT ["init-wordpress.sh"]
+ENTRYPOINT ["/usr/local/bin/init-wordpress.sh"]
 CMD ["php-fpm7.4", "-F"]
