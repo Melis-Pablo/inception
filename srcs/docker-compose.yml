@@ -10,7 +10,6 @@ services:
       - .env
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME}
-      - WP_URL=${WP_URL}
     ports:
       - "443:443"
     volumes:
