@@ -1,0 +1,55 @@
+# Inception Project Task List
+
+## 1. Environment Setup
+- [x] Create a Virtual Machine (VM)
+- [x] Configure Ubuntu Server in the VM
+- [x] Setup SSH access for easier development
+- [x] Configure networking and host resolution (login.42.fr)
+
+## 2. Project Structure
+- [x] Create the required directory structure
+- [x] Create initial .env file for environment variables
+- [x] Create a basic Makefile
+
+## 3. Docker Network
+- [x] Define Docker network in docker-compose.yml
+
+## 4. MariaDB Container
+- [x] Create Dockerfile for MariaDB
+- [x] Configure MariaDB (without using built-in image)
+- [x] Create initialization scripts for database and users
+- [x] Configure volume for persistence
+
+## 5. WordPress Container
+- [x] Create Dockerfile for WordPress with php-fpm
+- [x] Configure php-fpm
+- [x] Configure WordPress
+- [x] Configure volume for persistence
+
+## 6. NGINX Container
+- [x] Create Dockerfile for NGINX
+- [x] Generate SSL certificates for TLS
+- [x] Configure NGINX for secure access
+- [x] Setup reverse proxy to WordPress
+
+## 7. docker-compose.yml
+- [x] Configure all services
+- [x] Define volumes
+- [x] Set up networking
+- [x] Configure restart policies
+
+## 8. Makefile
+- [x] Create rules for building, starting, and stopping services
+- [x] Implement clean-up and reset functionality
+
+## 9. Testing
+- [ ] Test entire setup
+- [ ] Verify all requirements are met
+- [ ] Test automatic restart capability
+
+## 10. Bonus (Optional)
+- [ ] Implement Redis cache
+- [ ] Set up FTP server
+- [ ] Create a static website
+- [ ] Set up Adminer
+- [ ] Add extra service of choice

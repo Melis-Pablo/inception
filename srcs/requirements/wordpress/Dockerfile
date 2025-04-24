@@ -1,51 +1,56 @@
-# Alpine for lighter Base OS (penultimate stable verison)
-FROM alpine:3.20
+# Penultimate stable version of Debian (Bullseye)
+FROM debian:bullseye
 
-# Install required packages
-RUN apk update && apk add --no-cache \
-    php81 \
-    php81-fpm \
-    php81-mysqli \
-    php81-json \
-    php81-curl \
-    php81-dom \
-    php81-exif \
-    php81-fileinfo \
-    php81-mbstring \
-    php81-openssl \
-    php81-xml \
-    php81-zip \
-    php81-redis \
+# Environment variables to avoid interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive 
+
+# Update and install PHP, PHP-FPM, and required PHP extensions for WordPress
+RUN apt-get update && apt-get install -y \
+    php7.4-fpm \
+    php7.4-mysql \
+    php7.4-curl \
+    php7.4-gd \
+    php7.4-mbstring \
+    php7.4-xml \
+    php7.4-zip \
+    curl \
     wget \
-    curl
+    mariadb-client \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# WordPress installation and directory setup
-WORKDIR /var/www
+# Configure PHP-FPM
+COPY ./conf/www.conf /etc/php/7.4/fpm/pool.d/www.conf
 
-# Install WordPress CLI
-RUN wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+# Create directory for PHP-FPM to store its PID file and socket
+RUN mkdir -p /run/php && \
+    chmod 755 /run/php
+
+# Install WP-CLI for WordPress management
+RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
     chmod +x wp-cli.phar && \
     mv wp-cli.phar /usr/local/bin/wp
 
-# Copy PHP-FPM configuration
-COPY ./conf/www.conf /etc/php81/php-fpm.d/www.conf
+# Download and extract WordPress
+RUN mkdir -p /var/www/html && \
+    wget https://wordpress.org/wordpress-6.4.3.tar.gz && \
+    tar -xzf wordpress-6.4.3.tar.gz -C /var/www/html && \
+    rm wordpress-6.4.3.tar.gz && \
+    chown -R www-data:www-data /var/www/html
 
-# Copy WordPress setup script
-COPY ./tools/wp-setup.sh /wp-setup.sh
-RUN chmod +x /wp-setup.sh
+# Copy WordPress configuration file
+COPY ./conf/wp-config.php /var/www/html/wordpress/
 
-# Create wordpress directory and set permissions
-RUN mkdir -p /var/www/wordpress && \
-    chown -R nobody:nobody /var/www/wordpress
+# Copy initialization script
+COPY ./tools/init-wordpress.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/init-wordpress.sh
 
-WORKDIR /var/www/wordpress
+# Set working directory
+WORKDIR /var/www/html/wordpress
 
-# Set PHP-FPM to run as nobody
-RUN sed -i "s|user = nobody|user = nobody|g" /etc/php81/php-fpm.d/www.conf && \
-    sed -i "s|group = nobody|group = nobody|g" /etc/php81/php-fpm.d/www.conf
-
-# Expose PHP-FPM port
+# Expose the PHP-FPM port
 EXPOSE 9000
 
-# Start PHP-FPM
-CMD ["/usr/sbin/php-fpm81", "-F"]
+# Run the initialization script, then start PHP-FPM in foreground mode
+ENTRYPOINT ["/usr/local/bin/init-wordpress.sh"]
+CMD ["php-fpm7.4", "-F"]

@@ -1,30 +1,26 @@
-# Alpine for lighter Base OS (penultimate stable verison)
-FROM alpine:3.20
+# Penultimate stable version of Debian (Bullseye)
+FROM debian:bullseye
 
-# Install mariadb and dependencies
-RUN apk update && apk add --no-cache \
-    mariadb \
+# Update packages and install MariaDB server
+RUN apt-get update && apt-get install -y \
+    mariadb-server \
     mariadb-client \
-    mariadb-common && \
-    mkdir -p /run/mysqld && \
-    chown -R mysql:mysql /run/mysqld && \
-    mkdir -p /var/liv/mysql
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /var/run/mysqld /var/log/mysql \
+    && chown -R mysql:mysql /var/run/mysqld /var/log/mysql \
+    && chmod 750 /var/run/mysqld
 
-# Copy custom MariaDb configuration
-COPY conf/mariadb.conf /etc/my.cnf.d/mariadb-server.cnf
+# Copy configuration file and initialization script
+COPY ./conf/my.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
+COPY ./tools/init-db.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/init-db.sh
 
-# Copy initialization script
-COPY tools/init-db.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-
-# Set proper permissions
-RUN chown -R mysql:mysql /var/lib/mysql
-
-# Expose MariaDB Port
+# Expose MariaDB port
 EXPOSE 3306
 
-# Use proper initialization script as entrypoint
-ENTRYPOINT [ "/docker-entrypoint.sh" ]
+# Set entrypoint to our initialization script
+ENTRYPOINT ["/usr/local/bin/init-db.sh"]
 
-# Start MariaDB safely (no tail -f)
+# MariaDB as the main process (PID 1)
 CMD ["mysqld", "--user=mysql"]
