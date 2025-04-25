@@ -6,6 +6,7 @@ services:
     build:
       context: ./requirements/nginx
       dockerfile: Dockerfile
+    image: nginx:inception
     env_file:
       - .env
     environment:
@@ -19,13 +20,14 @@ services:
         condition: service_healthy
     networks:
       - inception_network
-    restart: unless-stopped
+    restart: always
 
   mariadb:
     container_name: mariadb
     build:
       context: ./requirements/mariadb
       dockerfile: Dockerfile
+    image: mariadb:inception
     env_file:
       - .env
     environment:
@@ -38,7 +40,7 @@ services:
       - db_root_password
     networks:
       - inception_network
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
@@ -50,6 +52,7 @@ services:
     build:
       context: ./requirements/wordpress
       dockerfile: Dockerfile
+    image: wordpress:inception
     depends_on:
       mariadb:
         condition: service_healthy
@@ -68,7 +71,7 @@ services:
       - credentials
     networks:
       - inception_network
-    restart: unless-stopped
+    restart: always
     healthcheck:
       test: ["CMD", "php-fpm7.4", "-t"]
       interval: 10s
