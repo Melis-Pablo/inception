@@ -314,7 +314,7 @@ print_header "Container Auto-Restart Test"
 # Function to test if a container restarts after crash
 test_container_restart() {
     local container=$1
-    local process_name=$2
+    local process_pattern=$2
     local signal=$3
     
     echo -e "${YELLOW}Testing auto-restart for $container...${NC}"
@@ -328,14 +328,14 @@ test_container_restart() {
     fi
     
     # Find the process to kill
-    local PROCESS_PID=$(docker exec $container ps -ef | grep "$process_name" | grep -v grep | awk '{print $2}' | head -1)
+    local PROCESS_PID=$(docker exec $container ps -ef | grep "$process_pattern" | grep -v grep | awk '{print $2}' | head -1)
     
     if [ -z "$PROCESS_PID" ]; then
-        echo -e "${RED}✗ Process $process_name not found in $container${NC}"
+        echo -e "${RED}✗ Process matching '$process_pattern' not found in $container${NC}"
         return 1
     fi
     
-    echo -e "  ${CYAN}Found $process_name with PID $PROCESS_PID${NC}"
+    echo -e "  ${CYAN}Found process matching '$process_pattern' with PID $PROCESS_PID${NC}"
     echo -e "  ${CYAN}Sending signal $signal to crash the process...${NC}"
     
     # Crash the process with the specified signal
@@ -356,8 +356,8 @@ test_container_restart() {
             # Get new container ID
             local NEW_ID=$(docker ps -q -f name=$container)
             
-            if [ "$NEW_ID" == "$CURRENT_ID" ]; then
-                # Same container ID means it restarted the process but kept container
+            # Check if process is running again
+            if docker exec $container ps -ef | grep "$process_pattern" | grep -v grep > /dev/null; then
                 echo -e "  ${GREEN}✓ Container $container successfully restarted the process${NC}"
                 restart_detected=true
                 break
@@ -404,16 +404,15 @@ test_container_restart() {
     fi
 }
 
-# Test each container
+# Test each container with correct process patterns
 echo -e "\n${BLUE}Testing NGINX container restart...${NC}"
-test_container_restart "nginx" "nginx: master" "11"  # SIGSEGV
+test_container_restart "nginx" "nginx: master process" "11"  # SIGSEGV
 
 echo -e "\n${BLUE}Testing MariaDB container restart...${NC}"
 test_container_restart "mariadb" "mysqld" "11"  # SIGSEGV
 
 echo -e "\n${BLUE}Testing WordPress container restart...${NC}"
 test_container_restart "wordpress" "php-fpm" "11"  # SIGSEGV
-
 # Summarize container restart test results
 echo -e "\n${CYAN}Container Auto-Restart Test Summary:${NC}"
 echo -e "${CYAN}The containers should automatically restart after a crash${NC}"
