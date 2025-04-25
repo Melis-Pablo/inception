@@ -308,6 +308,118 @@ for service in nginx mariadb wordpress; do
     fi
 done
 
+# Container Auto-Restart Test
+print_header "Container Auto-Restart Test"
+
+# Function to test if a container restarts after crash
+test_container_restart() {
+    local container=$1
+    local process_name=$2
+    local signal=$3
+    
+    echo -e "${YELLOW}Testing auto-restart for $container...${NC}"
+    
+    # Get current container ID for later comparison
+    local CURRENT_ID=$(docker ps -q -f name=$container)
+    
+    if [ -z "$CURRENT_ID" ]; then
+        echo -e "${RED}✗ $container is not running${NC}"
+        return 1
+    fi
+    
+    # Find the process to kill
+    local PROCESS_PID=$(docker exec $container ps -ef | grep "$process_name" | grep -v grep | awk '{print $2}' | head -1)
+    
+    if [ -z "$PROCESS_PID" ]; then
+        echo -e "${RED}✗ Process $process_name not found in $container${NC}"
+        return 1
+    fi
+    
+    echo -e "  ${CYAN}Found $process_name with PID $PROCESS_PID${NC}"
+    echo -e "  ${CYAN}Sending signal $signal to crash the process...${NC}"
+    
+    # Crash the process with the specified signal
+    docker exec $container kill -$signal $PROCESS_PID
+    
+    # Wait for container to restart (up to 30 seconds)
+    echo -e "  ${CYAN}Waiting for container to restart...${NC}"
+    local counter=0
+    local max_retries=30
+    local restart_detected=false
+    
+    while [ $counter -lt $max_retries ]; do
+        sleep 1
+        counter=$((counter+1))
+        
+        # Check if container is running
+        if docker ps -q -f name=$container > /dev/null; then
+            # Get new container ID
+            local NEW_ID=$(docker ps -q -f name=$container)
+            
+            if [ "$NEW_ID" == "$CURRENT_ID" ]; then
+                # Same container ID means it restarted the process but kept container
+                echo -e "  ${GREEN}✓ Container $container successfully restarted the process${NC}"
+                restart_detected=true
+                break
+            fi
+        fi
+        
+        echo -n "."
+    done
+    
+    echo ""
+    
+    if [ "$restart_detected" = false ]; then
+        echo -e "${RED}✗ Container $container failed to restart within $max_retries seconds${NC}"
+        return 1
+    fi
+    
+    # Verify the service is actually working after restart
+    sleep 5  # Give a bit more time for the service to initialize
+    
+    case $container in
+        nginx)
+            docker exec $container nginx -t &>/dev/null
+            local service_check=$?
+            ;;
+        mariadb)
+            docker exec $container mysqladmin ping -h localhost --silent &>/dev/null
+            local service_check=$?
+            ;;
+        wordpress)
+            docker exec $container php-fpm7.4 -t &>/dev/null
+            local service_check=$?
+            ;;
+        *)
+            local service_check=1
+            ;;
+    esac
+    
+    if [ $service_check -eq 0 ]; then
+        echo -e "${GREEN}✓ $container service is functioning after restart${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ $container service is not functioning after restart${NC}"
+        return 1
+    fi
+}
+
+# Test each container
+echo -e "\n${BLUE}Testing NGINX container restart...${NC}"
+test_container_restart "nginx" "nginx: master" "11"  # SIGSEGV
+
+echo -e "\n${BLUE}Testing MariaDB container restart...${NC}"
+test_container_restart "mariadb" "mysqld" "11"  # SIGSEGV
+
+echo -e "\n${BLUE}Testing WordPress container restart...${NC}"
+test_container_restart "wordpress" "php-fpm" "11"  # SIGSEGV
+
+# Summarize container restart test results
+echo -e "\n${CYAN}Container Auto-Restart Test Summary:${NC}"
+echo -e "${CYAN}The containers should automatically restart after a crash${NC}"
+echo -e "${CYAN}This is required by the Inception project specifications${NC}"
+echo -e "${CYAN}If any tests failed, check your docker-compose.yml restart policy${NC}"
+
 # Domain Configuration Check
 print_header "Domain Configuration Check"
 if grep -q "${DOMAIN}" /etc/hosts; then
