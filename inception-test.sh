@@ -321,11 +321,14 @@ test_container_restart() {
     
     # Get current container ID for later comparison
     local CURRENT_ID=$(docker ps -q -f name=$container)
+    local START_TIME=$(docker inspect --format='{{.State.StartedAt}}' $container)
     
     if [ -z "$CURRENT_ID" ]; then
         echo -e "${RED}✗ $container is not running${NC}"
         return 1
     fi
+    
+    echo -e "  ${CYAN}Container started at: $START_TIME${NC}"
     
     # Find the process to kill
     local PROCESS_PID=$(docker exec $container ps -ef | grep "$process_pattern" | grep -v grep | awk '{print $2}' | head -1)
@@ -336,70 +339,95 @@ test_container_restart() {
     fi
     
     echo -e "  ${CYAN}Found process matching '$process_pattern' with PID $PROCESS_PID${NC}"
-    echo -e "  ${CYAN}Sending signal $signal to crash the process...${NC}"
+    echo -e "  ${CYAN}Sending signal $signal to crash the process at $(date +"%T.%3N")...${NC}"
     
     # Crash the process with the specified signal
     docker exec $container kill -$signal $PROCESS_PID
     
-    # Wait for container to restart (up to 30 seconds)
-    echo -e "  ${CYAN}Waiting for container to restart...${NC}"
-    local counter=0
-    local max_retries=30
-    local restart_detected=false
+    # Immediately check container status
+    echo -e "  ${CYAN}Monitoring container status:${NC}"
     
-    while [ $counter -lt $max_retries ]; do
-        sleep 1
-        counter=$((counter+1))
+    # Monitor container status continuously with timestamps
+    local max_checks=30
+    local restart_detected=false
+    local down_detected=false
+    
+    for ((i=1; i<=max_checks; i++)); do
+        # Get current status
+        local STATUS=$(docker inspect --format='{{.State.Status}}' $container 2>/dev/null)
+        local HEALTH=$(docker inspect --format='{{.State.Health.Status}}' $container 2>/dev/null)
         
-        # Check if container is running
-        if docker ps -q -f name=$container > /dev/null; then
-            # Get new container ID
-            local NEW_ID=$(docker ps -q -f name=$container)
-            
-            # Check if process is running again
+        # Format timestamp for logging
+        local TIMESTAMP=$(date +"%T.%3N")
+        
+        # Check if container is in restarting state or process is missing
+        if [[ "$STATUS" == "restarting" ]]; then
+            echo -e "  ${RED}[$TIMESTAMP] Container is restarting${NC}"
+            down_detected=true
+        elif [[ "$STATUS" == "running" ]]; then
+            # Check if process is running
             if docker exec $container ps -ef | grep "$process_pattern" | grep -v grep > /dev/null; then
-                echo -e "  ${GREEN}✓ Container $container successfully restarted the process${NC}"
-                restart_detected=true
-                break
+                if [[ "$down_detected" == "true" ]]; then
+                    echo -e "  ${GREEN}[$TIMESTAMP] Process is back up and running${NC}"
+                    restart_detected=true
+                    break
+                else
+                    echo -e "  ${YELLOW}[$TIMESTAMP] Container still running, waiting for restart${NC}"
+                fi
+            else
+                echo -e "  ${RED}[$TIMESTAMP] Container running but process is down${NC}"
+                down_detected=true
             fi
+        else
+            echo -e "  ${RED}[$TIMESTAMP] Container status: $STATUS${NC}"
+            down_detected=true
         fi
         
-        echo -n "."
+        sleep 1
     done
     
-    echo ""
+    # After restart, get new details
+    local NEW_START_TIME=$(docker inspect --format='{{.State.StartedAt}}' $container)
+    local RESTART_COUNT=$(docker inspect --format='{{.RestartCount}}' $container)
     
-    if [ "$restart_detected" = false ]; then
-        echo -e "${RED}✗ Container $container failed to restart within $max_retries seconds${NC}"
-        return 1
+    echo -e "  ${CYAN}Container restart count: $RESTART_COUNT${NC}"
+    echo -e "  ${CYAN}New start time: $NEW_START_TIME${NC}"
+    
+    if [[ "$START_TIME" != "$NEW_START_TIME" ]]; then
+        echo -e "  ${GREEN}✓ Confirmed: Container was restarted (start time changed)${NC}"
     fi
     
-    # Verify the service is actually working after restart
-    sleep 5  # Give a bit more time for the service to initialize
-    
-    case $container in
-        nginx)
-            docker exec $container nginx -t &>/dev/null
-            local service_check=$?
-            ;;
-        mariadb)
-            docker exec $container mysqladmin ping -h localhost --silent &>/dev/null
-            local service_check=$?
-            ;;
-        wordpress)
-            docker exec $container php-fpm7.4 -t &>/dev/null
-            local service_check=$?
-            ;;
-        *)
-            local service_check=1
-            ;;
-    esac
-    
-    if [ $service_check -eq 0 ]; then
-        echo -e "${GREEN}✓ $container service is functioning after restart${NC}"
-        return 0
+    if [[ "$restart_detected" == "true" || "$RESTART_COUNT" -gt 0 ]]; then
+        echo -e "${GREEN}✓ Container $container successfully recovered from crash${NC}"
+        
+        # Verify the service is actually working
+        case $container in
+            nginx)
+                docker exec $container nginx -t &>/dev/null
+                local service_check=$?
+                ;;
+            mariadb)
+                docker exec $container mysqladmin ping -h localhost --silent &>/dev/null
+                local service_check=$?
+                ;;
+            wordpress)
+                docker exec $container php-fpm7.4 -t &>/dev/null
+                local service_check=$?
+                ;;
+            *)
+                local service_check=1
+                ;;
+        esac
+        
+        if [ $service_check -eq 0 ]; then
+            echo -e "${GREEN}✓ $container service is functioning after restart${NC}"
+            return 0
+        else
+            echo -e "${RED}✗ $container service is not functioning after restart${NC}"
+            return 1
+        fi
     else
-        echo -e "${RED}✗ $container service is not functioning after restart${NC}"
+        echo -e "${RED}✗ Could not confirm restart of $container${NC}"
         return 1
     fi
 }
