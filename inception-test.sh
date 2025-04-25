@@ -181,15 +181,15 @@ for service in nginx mariadb wordpress; do
         print_result 0 "$service image avoids 'latest' tag"
     fi
     
-    # Check base image is Alpine or Debian penultimate version
-    if docker history "$service" 2>/dev/null | grep -q -E 'alpine:|debian:'; then
-        if docker history "$service" 2>/dev/null | grep -q -E 'alpine:latest|debian:latest'; then
-            print_result 1 "$service uses proper base image" "Use penultimate stable version, not latest"
-        else
-            print_result 0 "$service uses proper base image"
-        fi
+    # Get the image ID
+    IMAGE_ID=$(docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep "$service" | awk '{print $2}')
+    
+    # Check if Dockerfile contains proper base image
+    DOCKERFILE_PATH="srcs/requirements/$service/Dockerfile"
+    if grep -q -E '^FROM (debian:(bullseye|buster)|alpine:[0-9]+\.[0-9]+)' "$DOCKERFILE_PATH"; then
+        print_result 0 "$service uses proper base image"
     else
-        print_result 1 "$service uses proper base image" "Use Alpine or Debian penultimate stable version"
+        print_result 1 "$service uses proper base image" "Use Alpine or Debian penultimate stable version (bullseye/buster for Debian)"
     fi
 done
 
