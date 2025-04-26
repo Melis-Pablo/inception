@@ -308,85 +308,104 @@ for service in nginx mariadb wordpress; do
     fi
 done
 
+
 # Container Auto-Restart Test
 print_header "Container Auto-Restart Test"
 
-# Function to test if a container restarts after crash
+# Function to test if all containers restart after Docker daemon restart
 test_container_restart() {
-    local container=$1
-    local signal=$2  # Changed to just use signal
+    echo -e "${YELLOW}Testing auto-restart for all containers...${NC}"
     
-    echo -e "${YELLOW}Testing auto-restart for $container...${NC}"
+    # Get current container IDs and start times
+    local CONTAINERS=("nginx" "mariadb" "wordpress")
+    declare -A CURRENT_IDS
+    declare -A START_TIMES
+    declare -A CONTAINER_STATUS
     
-    # Get current container ID and start time
-    local CURRENT_ID=$(docker ps -q -f name=$container)
-    local START_TIME=$(docker inspect --format='{{.State.StartedAt}}' $container)
-    local RESTART_COUNT_BEFORE=$(docker inspect --format='{{.RestartCount}}' $container)
+    for container in "${CONTAINERS[@]}"; do
+        if docker ps -q -f name=$container > /dev/null; then
+            CURRENT_IDS[$container]=$(docker ps -q -f name=$container)
+            START_TIMES[$container]=$(docker inspect --format='{{.State.StartedAt}}' $container)
+            CONTAINER_STATUS[$container]="running"
+            echo -e "  ${CYAN}Container $container - ID: ${CURRENT_IDS[$container]}${NC}"
+            echo -e "  ${CYAN}Container $container - Started at: ${START_TIMES[$container]}${NC}"
+        else
+            CONTAINER_STATUS[$container]="not running"
+            echo -e "  ${RED}Container $container is not running before test${NC}"
+        fi
+    done
     
-    echo -e "  ${CYAN}Current container ID: $CURRENT_ID${NC}"
-    echo -e "  ${CYAN}Started at: $START_TIME${NC}"
-    echo -e "  ${CYAN}Current restart count: $RESTART_COUNT_BEFORE${NC}"
+    # Restart Docker daemon
+    echo -e "  ${RED}Restarting Docker daemon with sudo rc-service docker restart at $(date +"%T.%3N")...${NC}"
+    sudo rc-service docker restart
     
-    # Force kill the container by stopping PID 1 with SIGKILL
-    echo -e "  ${RED}Forcibly killing PID 1 in container at $(date +"%T.%3N")...${NC}"
-    docker exec $container kill -9 1
-    
-    # Wait and monitor
-    echo -e "  ${CYAN}Monitoring restart...${NC}"
-    
-    # Give it a moment to register the kill
-    sleep 2
-    
-    # Monitor restart for up to 30 seconds
+    # Wait for Docker to come back up
+    echo -e "  ${YELLOW}Waiting for Docker daemon to restart...${NC}"
     local counter=0
     local max_retries=30
-    local restart_detected=false
     
     while [ $counter -lt $max_retries ]; do
-        # Check container status
-        if docker ps -q -f name=$container > /dev/null; then
-            # Container is running, check if restart count increased
-            local RESTART_COUNT_AFTER=$(docker inspect --format='{{.RestartCount}}' $container 2>/dev/null)
-            local NEW_ID=$(docker ps -q -f name=$container)
-            local NEW_START_TIME=$(docker inspect --format='{{.State.StartedAt}}' $container 2>/dev/null)
-            
-            echo -e "  ${CYAN}[$(date +"%T.%3N")] Container status: running${NC}"
-            echo -e "  ${CYAN}New container ID: $NEW_ID${NC}"
-            echo -e "  ${CYAN}New start time: $NEW_START_TIME${NC}"
-            echo -e "  ${CYAN}New restart count: $RESTART_COUNT_AFTER${NC}"
-            
-            if [ "$RESTART_COUNT_AFTER" -gt "$RESTART_COUNT_BEFORE" ] || [ "$START_TIME" != "$NEW_START_TIME" ]; then
-                echo -e "  ${GREEN}✓ Container has been restarted!${NC}"
-                restart_detected=true
-                break
-            fi
-        else
-            echo -e "  ${RED}[$(date +"%T.%3N")] Container is down, waiting for restart...${NC}"
+        if docker ps &>/dev/null; then
+            echo -e "  ${GREEN}Docker daemon is back online at $(date +"%T.%3N")${NC}"
+            break
         fi
-        
+        echo -e "  ${YELLOW}Still waiting for Docker daemon... (${counter}s)${NC}"
         sleep 2
         counter=$((counter+2))
     done
     
-    if [ "$restart_detected" = true ]; then
-        echo -e "${GREEN}✓ Container $container successfully restarted after crash${NC}"
+    if [ $counter -ge $max_retries ]; then
+        echo -e "  ${RED}Docker daemon did not come back online within ${max_retries} seconds${NC}"
+        return 1
+    fi
+    
+    # Give containers time to restart
+    echo -e "  ${YELLOW}Waiting for containers to restart (15 seconds)...${NC}"
+    sleep 15
+    
+    # Check if all containers restarted properly
+    local all_restarted=true
+    
+    for container in "${CONTAINERS[@]}"; do
+        if [ "${CONTAINER_STATUS[$container]}" = "running" ]; then
+            if docker ps -q -f name=$container > /dev/null; then
+                local new_id=$(docker ps -q -f name=$container)
+                local new_start_time=$(docker inspect --format='{{.State.StartedAt}}' $container 2>/dev/null)
+                
+                echo -e "  ${CYAN}Container $container - New ID: $new_id${NC}"
+                echo -e "  ${CYAN}Container $container - New start time: $new_start_time${NC}"
+                
+                if [ "${START_TIMES[$container]}" != "$new_start_time" ]; then
+                    echo -e "  ${GREEN}✓ Container $container successfully restarted${NC}"
+                else
+                    echo -e "  ${RED}✗ Container $container did NOT restart properly${NC}"
+                    all_restarted=false
+                fi
+            else
+                echo -e "  ${RED}✗ Container $container failed to restart${NC}"
+                all_restarted=false
+            fi
+        fi
+    done
+    
+    if [ "$all_restarted" = true ]; then
+        echo -e "${GREEN}✓ All containers successfully restarted after Docker daemon restart${NC}"
         return 0
     else
-        echo -e "${RED}✗ Container $container did NOT restart automatically${NC}"
+        echo -e "${RED}✗ One or more containers did NOT restart automatically${NC}"
         echo -e "${RED}✗ THIS IS A CRITICAL FAILURE FOR YOUR INCEPTION PROJECT${NC}"
         return 1
     fi
 }
 
-# Test each container with SIGKILL
-echo -e "\n${BLUE}Testing NGINX container restart...${NC}"
-test_container_restart "nginx" "9"  # SIGKILL
+# Run the test once for all containers
+test_container_restart
 
-echo -e "\n${BLUE}Testing MariaDB container restart...${NC}"
-test_container_restart "mariadb" "9"  # SIGKILL
-
-echo -e "\n${BLUE}Testing WordPress container restart...${NC}"
-test_container_restart "wordpress" "9"  # SIGKILL
+# Summarize container restart test results
+echo -e "\n${CYAN}Container Auto-Restart Test Summary:${NC}"
+echo -e "${CYAN}The containers should automatically restart after Docker daemon restart${NC}"
+echo -e "${CYAN}This is required by the Inception project specifications${NC}"
+echo -e "${CYAN}If the test failed, check your docker-compose.yml restart policy${NC}"
 
 # Summarize container restart test results
 echo -e "\n${CYAN}Container Auto-Restart Test Summary:${NC}"

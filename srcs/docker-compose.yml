@@ -1,4 +1,4 @@
-version: "3"
+version: "3.8"
 
 services:
   nginx:
@@ -20,6 +20,7 @@ services:
         condition: service_healthy
     networks:
       - inception_network
+    init: true
     restart: always
 
   mariadb:
@@ -40,6 +41,7 @@ services:
       - db_root_password
     networks:
       - inception_network
+    init: true
     restart: always
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -71,6 +73,7 @@ services:
       - credentials
     networks:
       - inception_network
+    init: true
     restart: always
     healthcheck:
       test: ["CMD", "php-fpm7.4", "-t"]
