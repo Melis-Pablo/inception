@@ -48,6 +48,7 @@ fclean: clean
 	@if [ -d "$(DATA_PATH)" ]; then \
 		sudo rm -rf $(DATA_PATH); \
 	fi
+	@docker volume rm $(shell docker volume ls -q) || true
 	@echo "$(RED)All data has been removed!$(RESET)"
 
 re: fclean all
