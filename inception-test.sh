@@ -407,12 +407,6 @@ echo -e "${CYAN}The containers should automatically restart after Docker daemon 
 echo -e "${CYAN}This is required by the Inception project specifications${NC}"
 echo -e "${CYAN}If the test failed, check your docker-compose.yml restart policy${NC}"
 
-# Summarize container restart test results
-echo -e "\n${CYAN}Container Auto-Restart Test Summary:${NC}"
-echo -e "${CYAN}The containers should automatically restart after a crash${NC}"
-echo -e "${CYAN}This is required by the Inception project specifications${NC}"
-echo -e "${CYAN}If any tests failed, check your docker-compose.yml restart policy${NC}"
-
 # Domain Configuration Check
 print_header "Domain Configuration Check"
 if grep -q "${DOMAIN}" /etc/hosts; then
